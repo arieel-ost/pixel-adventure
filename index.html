@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel Adventure</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0a0a1a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden;
+  font-family: monospace;
+}
+canvas {
+  border: 4px solid #444;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+const COLS = 160;
+const ROWS = 120;
+const PX = 5;
+canvas.width = COLS * PX;
+canvas.height = ROWS * PX;
+
+// --- PIXEL DRAWING HELPERS ---
+function drawPx(x, y, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.floor(x) * PX, Math.floor(y) * PX, PX, PX);
+}
+
+function drawSprite(sx, sy, sprite) {
+  for (let r = 0; r < sprite.length; r++) {
+    for (let c = 0; c < sprite[r].length; c++) {
+      if (sprite[r][c]) drawPx(sx + c, sy + r, sprite[r][c]);
+    }
+  }
+}
+
+// --- CHARACTER SPRITES (improved) ---
+const C = {
+  catBody: '#e8a04a', catLight: '#f0bb66', catDark: '#c4792a', catEye: '#44dd44', catPupil: '#115511',
+  catNose: '#ff6688', catEarIn: '#ffbbaa', catWhisker: '#ddaa77', catTail: '#d4943e',
+  dogBody: '#c48040', dogLight: '#dda060', dogDark: '#8b5e2a', dogEye: '#332211', dogNose: '#222222',
+  dogTongue: '#ff5577', dogCollar: '#dd3333', dogBelly: '#e0a868',
+  wolfBody: '#8899aa', wolfDark: '#5a6677', wolfLight: '#bbccdd', wolfEye: '#ffcc00', wolfPupil: '#884400',
+  wolfNose: '#333333', wolfFur: '#99aabb', wolfBelly: '#aabbcc',
+};
+
+function makeCatFrame(legFrame) {
+  const _ = null;
+  const b = C.catBody, bl = C.catLight, d = C.catDark, e = C.catEye, p = C.catPupil;
+  const n = C.catNose, ei = C.catEarIn, w = C.catWhisker, tl = C.catTail;
+  const legs = [
+    [[_,_,d,d,_,_,d,d,_,_],[_,_,d,d,_,_,d,d,_,_]],
+    [[_,d,d,_,_,_,d,d,_,_],[_,_,d,d,_,d,d,_,_,_]],
+    [[_,_,d,d,_,d,d,_,_,_],[_,d,d,_,_,_,d,d,_,_]],
+  ];
+  return [
+    [_,b,_,_,_,_,_,_,b,_],  // ear tips
+    [_,b,b,_,_,_,_,b,b,_],  // ears
+    [_,ei,b,b,b,b,b,b,ei,_], // ear inner + head
+    [_,b,bl,b,b,b,bl,b,b,_], // forehead highlight
+    [_,b,e,p,b,b,e,p,b,_],  // eyes with pupils
+    [w,b,b,b,n,n,b,b,b,w],  // nose + whiskers
+    [_,_,bl,b,b,b,b,bl,_,_], // neck lighter
+    [_,_,b,b,bl,bl,b,b,_,_], // body with belly
+    [_,_,b,b,bl,bl,b,b,_,_], // body
+    [_,_,b,b,b,b,b,b,tl,_], // tail start
+    ...legs[legFrame]
+  ];
+}
+
+function makeDogFrame(legFrame) {
+  const _ = null;
+  const b = C.dogBody, bl = C.dogLight, d = C.dogDark, e = C.dogEye, n = C.dogNose;
+  const t = C.dogTongue, co = C.dogCollar, be = C.dogBelly;
+  const legs = [
+    [[_,_,d,d,_,_,d,d,_,_],[_,_,d,d,_,_,d,d,_,_]],
+    [[_,d,d,_,_,_,d,d,_,_],[_,_,d,d,_,d,d,_,_,_]],
+    [[_,_,d,d,_,d,d,_,_,_],[_,d,d,_,_,_,d,d,_,_]],
+  ];
+  return [
+    [_,_,_,_,_,_,_,_,_,_],  // space
+    [_,d,d,_,_,_,_,d,d,_],  // floppy ears
+    [d,d,b,b,b,b,b,b,d,d],  // ears hang down
+    [_,b,bl,b,b,b,bl,b,b,_], // forehead
+    [_,b,e,e,b,b,e,e,b,_],  // bigger eyes
+    [_,b,b,b,n,n,b,b,b,_],  // nose
+    [_,_,b,b,t,t,b,b,_,_],  // tongue
+    [_,co,co,co,co,co,co,co,co,_], // red collar!
+    [_,_,b,be,be,be,be,b,_,_], // belly
+    [_,_,b,b,b,b,b,b,_,_],  // body
+    ...legs[legFrame]
+  ];
+}
+
+function makeWolfFrame(legFrame) {
+  const _ = null;
+  const b = C.wolfBody, d = C.wolfDark, l = C.wolfLight, e = C.wolfEye, p = C.wolfPupil;
+  const n = C.wolfNose, f = C.wolfFur, be = C.wolfBelly;
+  const legs = [
+    [[_,_,d,d,_,_,d,d,_,_],[_,_,d,d,_,_,d,d,_,_]],
+    [[_,d,d,_,_,_,d,d,_,_],[_,_,d,d,_,d,d,_,_,_]],
+    [[_,_,d,d,_,d,d,_,_,_],[_,d,d,_,_,_,d,d,_,_]],
+  ];
+  return [
+    [_,d,_,_,_,_,_,_,d,_],  // pointed ears
+    [_,d,d,_,_,_,_,d,d,_],  // ears
+    [_,f,b,b,b,b,b,b,f,_],  // fur tufts on sides
+    [_,b,b,b,b,b,b,b,b,_],  // head
+    [_,b,e,p,b,b,e,p,b,_],  // eyes with pupils
+    [_,l,l,b,n,n,b,l,l,_],  // snout lighter
+    [_,_,l,l,l,l,l,l,_,_],  // jaw
+    [_,_,b,be,be,be,be,b,_,_], // belly
+    [_,_,f,b,b,b,b,f,_,_],  // fur detail
+    [_,_,b,b,b,b,b,b,d,_],  // tail stub
+    ...legs[legFrame]
+  ];
+}
+
+// Enemy sprites
+function makeSlimeFrame(frame) {
+  const _ = null, g = '#44bb44', d = '#228822', e = '#ffffff';
+  if (frame === 0) return [
+    [_,_,_,g,g,g,g,_,_,_],[_,_,g,g,g,g,g,g,_,_],
+    [_,g,g,g,g,g,g,g,g,_],[_,g,e,g,g,g,e,g,g,_],
+    [_,g,g,g,g,g,g,g,g,_],[_,g,g,g,g,g,g,g,g,_],
+    [_,d,d,d,d,d,d,d,d,_],
+  ];
+  return [
+    [_,_,_,_,_,_,_,_,_,_],[_,_,_,g,g,g,g,_,_,_],
+    [_,_,g,g,g,g,g,g,_,_],[_,g,e,g,g,g,e,g,g,_],
+    [_,g,g,g,g,g,g,g,g,_],[d,d,d,d,d,d,d,d,d,d],
+    [_,d,_,_,d,d,_,_,d,_],
+  ];
+}
+
+function makeBatFrame(frame) {
+  const _ = null, b = '#6644aa', d = '#442266', e = '#ff4444';
+  if (frame === 0) return [
+    [b,_,_,_,_,_,_,_,_,b],[b,b,_,_,_,_,_,_,b,b],
+    [b,b,b,_,d,d,_,b,b,b],[_,b,b,d,d,d,d,b,b,_],
+    [_,_,b,d,e,d,e,b,_,_],[_,_,_,d,d,d,d,_,_,_],
+    [_,_,_,_,d,d,_,_,_,_],
+  ];
+  return [
+    [_,_,_,_,_,_,_,_,_,_],[b,b,_,_,_,_,_,_,b,b],
+    [_,b,b,_,d,d,_,b,b,_],[_,_,b,d,d,d,d,b,_,_],
+    [_,_,b,d,e,d,e,b,_,_],[_,_,_,d,d,d,d,_,_,_],
+    [_,_,_,_,d,d,_,_,_,_],
+  ];
+}
+
+// Item sprites
+function makeFireFlowerSprite() {
+  const _ = null, r = '#ff3300', o = '#ff8800', y = '#ffdd00', g = '#33aa33', gd = '#227722';
+  return [
+    [_,_,_,y,y,_,_,_,_,_],
+    [_,_,y,o,o,y,_,_,_,_],
+    [_,y,o,r,r,o,y,_,_,_],
+    [_,_,y,o,o,y,_,_,_,_],
+    [_,_,_,g,g,_,_,_,_,_],
+    [_,_,_,g,g,_,_,_,_,_],
+    [_,_,g,gd,gd,g,_,_,_,_],
+    [_,g,_,_,_,_,g,_,_,_],
+  ];
+}
+function makeSpeedStarSprite() {
+  const _ = null, y = '#ffdd00', o = '#ffaa00', w = '#ffffff';
+  return [
+    [_,_,_,_,y,_,_,_,_,_],
+    [_,_,_,y,y,y,_,_,_,_],
+    [_,_,_,y,w,y,_,_,_,_],
+    [y,y,y,y,y,y,y,y,y,_],
+    [_,o,y,y,w,y,y,o,_,_],
+    [_,_,y,y,y,y,y,_,_,_],
+    [_,y,y,_,_,_,y,y,_,_],
+    [_,y,_,_,_,_,_,y,_,_],
+  ];
+}
+function makeShieldSprite() {
+  const _ = null, b = '#4488ff', bd = '#2266cc', w = '#aaddff';
+  return [
+    [_,_,b,b,b,b,b,b,_,_],
+    [_,b,b,w,b,b,w,b,b,_],
+    [_,b,w,w,b,b,b,b,b,_],
+    [_,b,b,b,b,b,b,b,b,_],
+    [_,b,b,b,bd,bd,b,b,b,_],
+    [_,_,b,b,bd,bd,b,b,_,_],
+    [_,_,_,b,b,b,b,_,_,_],
+    [_,_,_,_,b,b,_,_,_,_],
+  ];
+}
+function makeSuperJumpSprite() {
+  const _ = null, p = '#cc44ff', pd = '#9922cc', w = '#ffaaff';
+  return [
+    [_,_,_,w,w,_,_,_,_,_],
+    [_,_,w,p,p,w,_,_,_,_],
+    [_,_,p,pd,pd,p,_,_,_,_],
+    [_,_,w,p,p,w,_,_,_,_],
+    [_,p,p,pd,pd,p,p,_,_,_],
+    [p,pd,pd,pd,pd,pd,pd,p,_,_],
+    [p,p,p,p,p,p,p,p,_,_],
+    [_,pd,_,_,_,_,pd,_,_,_],
+  ];
+}
+
+// Item types
+const ITEM_TYPES = ['fire', 'speed', 'shield', 'superjump'];
+const ITEM_SPRITES = {
+  fire: makeFireFlowerSprite,
+  speed: makeSpeedStarSprite,
+  shield: makeShieldSprite,
+  superjump: makeSuperJumpSprite,
+};
+
+// Fireball sprite
+function makeFireball() {
+  const _ = null, o = '#ff8800', y = '#ffdd00', r = '#ff3300';
+  return [
+    [_,_,y,y,_,_],
+    [_,y,o,o,y,_],
+    [y,o,r,r,o,y],
+    [y,o,r,r,o,y],
+    [_,y,o,o,y,_],
+    [_,_,y,y,_,_],
+  ];
+}
+
+// Coin sprite
+function makeCoinFrame(frame) {
+  const _ = null, g = '#ffdd00', d = '#cc9900';
+  if (frame === 0) return [
+    [_,_,g,g,g,_,_],[_,g,g,d,g,g,_],[g,g,d,d,d,g,g],
+    [g,g,d,d,d,g,g],[g,g,d,d,d,g,g],[_,g,g,d,g,g,_],[_,_,g,g,g,_,_],
+  ];
+  return [
+    [_,_,_,g,_,_,_],[_,_,g,d,g,_,_],[_,_,g,d,g,_,_],
+    [_,_,g,d,g,_,_],[_,_,g,d,g,_,_],[_,_,g,d,g,_,_],[_,_,_,g,_,_,_],
+  ];
+}
+
+// --- IMPROVED TILE DRAWING ---
+const TILE = { AIR:0, GROUND:1, GRASS:2, STONE:3, BRICK:4, SPIKE:5, WATER:6, LAVA:7, PLATFORM:8, MUSHROOM_BLOCK:9 };
+
+// Pre-render tile patterns for better look
+function drawTile(tx, ty, type, cx, cy) {
+  const sx = tx * 8 - cx;
+  const sy = ty * 8 - cy;
+  if (sx < -8 || sx > COLS || sy < -8 || sy > ROWS) return;
+
+  const seed = (tx * 7 + ty * 13) & 0xFF;
+
+  if (type === TILE.GROUND) {
+    // Rich dirt with subtle noise
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const n = ((seed + r * 5 + c * 11) & 7);
+        const base = 0x5c + n * 3;
+        const g = 0x30 + n * 2;
+        const b = 0x18 + n;
+        drawPx(sx+c, sy+r, `rgb(${base},${g},${b})`);
+      }
+    }
+    // Small pebbles
+    if (seed % 5 === 0) drawPx(sx+2, sy+5, '#8a6a4a');
+    if (seed % 7 === 0) drawPx(sx+5, sy+3, '#7a5a3a');
+  }
+  else if (type === TILE.GRASS) {
+    // Dirt base
+    for (let r = 2; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const n = ((seed + r * 5 + c * 11) & 7);
+        drawPx(sx+c, sy+r, `rgb(${0x5c+n*3},${0x30+n*2},${0x18+n})`);
+      }
+    }
+    // Green grass top (2px thick with variation)
+    for (let c = 0; c < 8; c++) {
+      const n = ((seed + c * 7) & 3);
+      drawPx(sx+c, sy, `rgb(${0x44+n*8},${0xbb+n*5},${0x33+n*4})`);
+      drawPx(sx+c, sy+1, `rgb(${0x3a+n*6},${0x99+n*6},${0x2a+n*4})`);
+    }
+    // Grass blade tips
+    if ((tx + seed) % 3 === 0) drawPx(sx + (seed%6)+1, sy-1, '#55cc44');
+    if ((tx + seed) % 4 === 0) drawPx(sx + (seed%5)+2, sy-1, '#66dd55');
+  }
+  else if (type === TILE.STONE) {
+    // Stone with cracks and shading
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const n = ((seed + r * 3 + c * 7) & 7);
+        const v = 0x66 + n * 4;
+        drawPx(sx+c, sy+r, `rgb(${v},${v},${v+8})`);
+      }
+    }
+    // Edge highlights (top/left lighter, bottom/right darker)
+    for (let c = 0; c < 8; c++) drawPx(sx+c, sy, `rgba(255,255,255,0.12)`);
+    for (let r = 0; r < 8; r++) drawPx(sx, sy+r, `rgba(255,255,255,0.08)`);
+    for (let c = 0; c < 8; c++) drawPx(sx+c, sy+7, `rgba(0,0,0,0.15)`);
+    // Crack detail
+    if (seed % 4 === 0) {
+      drawPx(sx+3, sy+2, '#555566');
+      drawPx(sx+4, sy+3, '#555566');
+      drawPx(sx+4, sy+4, '#555566');
+    }
+  }
+  else if (type === TILE.BRICK) {
+    // Proper brick pattern with mortar
+    const mortar = '#8a7a6a';
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        drawPx(sx+c, sy+r, mortar);
+      }
+    }
+    // Top brick row (offset)
+    for (let c = 0; c < 8; c++) {
+      if (c !== 3) { // mortar line at 3
+        const n = ((seed + c * 5) & 3);
+        for (let r = 0; r < 3; r++) {
+          drawPx(sx+c, sy+r, `rgb(${0xaa+n*4},${0x55+n*3},${0x33+n*2})`);
+        }
+      }
+    }
+    // Bottom brick row (offset by half)
+    for (let c = 0; c < 8; c++) {
+      if (c !== 7 && c !== 0) {
+        const n = ((seed + c * 3 + 5) & 3);
+        for (let r = 4; r < 7; r++) {
+          drawPx(sx+c, sy+r, `rgb(${0xa5+n*4},${0x50+n*3},${0x30+n*2})`);
+        }
+      }
+    }
+    // Mortar lines
+    for (let c = 0; c < 8; c++) drawPx(sx+c, sy+3, mortar);
+    for (let c = 0; c < 8; c++) drawPx(sx+c, sy+7, mortar);
+  }
+  else if (type === TILE.SPIKE) {
+    // Two spikes per tile
+    const s1 = '#999999', s2 = '#777777', s3 = '#aaaaaa';
+    // Left spike
+    drawPx(sx+1, sy+7, s2); drawPx(sx+2, sy+7, s2); drawPx(sx+3, sy+7, s2);
+    drawPx(sx+1, sy+6, s2); drawPx(sx+2, sy+6, s1); drawPx(sx+3, sy+6, s2);
+    drawPx(sx+2, sy+5, s1); drawPx(sx+2, sy+4, s3); drawPx(sx+2, sy+3, s3);
+    // Right spike
+    drawPx(sx+5, sy+7, s2); drawPx(sx+6, sy+7, s2); drawPx(sx+7, sy+7, s2);
+    drawPx(sx+5, sy+6, s2); drawPx(sx+6, sy+6, s1); drawPx(sx+7, sy+6, s2);
+    drawPx(sx+6, sy+5, s1); drawPx(sx+6, sy+4, s3); drawPx(sx+6, sy+3, s3);
+  }
+  else if (type === TILE.WATER) {
+    const t = Date.now() / 500;
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const wave = Math.sin(t + tx * 0.8 + c * 0.5 + r * 0.3) * 15;
+        const rb = 0x22 + r * 3, gb = 0x55 + r * 2;
+        const bb = Math.min(255, 0xcc + Math.floor(wave));
+        const alpha = r === 0 ? 0.6 : 0.85;
+        drawPx(sx+c, sy+r, `rgba(${rb},${gb},${bb},${alpha})`);
+      }
+    }
+    // Surface shimmer
+    if (ty > 0 && getTile(tx, ty-1) === TILE.AIR) {
+      const shimmer = Math.sin(t * 2 + tx) > 0.3;
+      if (shimmer) {
+        drawPx(sx + (Math.floor(t + tx) % 6) + 1, sy, '#88bbff');
+      }
+    }
+  }
+  else if (type === TILE.LAVA) {
+    const t = Date.now() / 300;
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const glow = Math.sin(t + tx * 1.2 + c * 0.7 + r * 0.5) * 30;
+        const rv = Math.min(255, 0xee + Math.floor(glow));
+        const gv = Math.min(255, Math.max(0, 0x44 + Math.floor(glow * 1.5)));
+        drawPx(sx+c, sy+r, `rgb(${rv},${gv},0)`);
+      }
+    }
+    // Bright bubbles
+    const bx = Math.floor(Math.sin(t * 1.5 + seed) * 3 + 4);
+    const by = Math.floor(Math.sin(t * 2 + seed * 2) * 2 + 2);
+    drawPx(sx + bx, sy + by, '#ffee66');
+  }
+  else if (type === TILE.PLATFORM) {
+    // Wooden platform look
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 8; c++) {
+        const n = ((seed + c * 3 + r * 7) & 7);
+        drawPx(sx+c, sy+r, `rgb(${0x88+n*3},${0x77+n*2},${0x44+n*2})`);
+      }
+    }
+    // Top highlight
+    for (let c = 0; c < 8; c++) drawPx(sx+c, sy, `rgb(${0xaa},${0x99},${0x66})`);
+    // Wood grain
+    drawPx(sx+2, sy+1, '#776633');
+    drawPx(sx+5, sy+2, '#776633');
+    // Bottom shadow
+    for (let c = 0; c < 8; c++) drawPx(sx+c, sy+2, `rgb(${0x66},${0x55},${0x33})`);
+    // Support brackets
+    drawPx(sx+1, sy+3, '#665533');
+    drawPx(sx+6, sy+3, '#665533');
+  }
+  else if (type === TILE.MUSHROOM_BLOCK) {
+    // Question-mark style mushroom block
+    const t2 = Date.now() / 600;
+    const glow = Math.sin(t2) * 0.15 + 0.85;
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const edge = (r === 0 || r === 7 || c === 0 || c === 7);
+        if (edge) {
+          drawPx(sx+c, sy+r, '#996622');
+        } else {
+          const v = Math.floor(0xdd * glow);
+          drawPx(sx+c, sy+r, `rgb(${v},${Math.floor(v*0.75)},${0x22})`);
+        }
+      }
+    }
+    // Mushroom icon on block
+    drawPx(sx+3, sy+2, '#ff4444');
+    drawPx(sx+4, sy+2, '#ff4444');
+    drawPx(sx+2, sy+3, '#ff4444');
+    drawPx(sx+3, sy+3, '#ffffff');
+    drawPx(sx+4, sy+3, '#ff4444');
+    drawPx(sx+5, sy+3, '#ff4444');
+    drawPx(sx+3, sy+4, '#ccaa66');
+    drawPx(sx+4, sy+4, '#ccaa66');
+    drawPx(sx+3, sy+5, '#ccaa66');
+    drawPx(sx+4, sy+5, '#ccaa66');
+  }
+}
+
+// --- LEVEL DATA ---
+function createLevel1() {
+  const W = 60, H = 20;
+  const t = Array.from({length: H}, () => Array(W).fill(0));
+  for (let x = 0; x < W; x++) {
+    t[H-1][x] = TILE.GROUND;
+    t[H-2][x] = TILE.GROUND;
+    if (x < 8 || (x > 12 && x < 20) || (x > 23 && x < 35) || (x > 38 && x < W))
+      t[H-3][x] = TILE.GRASS;
+  }
+  for (let x = 8; x <= 12; x++) { t[H-1][x] = 0; t[H-2][x] = 0; t[H-3][x] = 0; }
+  for (let x = 8; x <= 12; x++) { t[H-1][x] = TILE.WATER; t[H-2][x] = TILE.WATER; }
+  t[H-5][9] = TILE.PLATFORM; t[H-5][10] = TILE.PLATFORM; t[H-5][11] = TILE.PLATFORM;
+  for (let x = 15; x < 20; x++) { t[H-4][x] = TILE.GRASS; t[H-3][x] = TILE.GROUND; }
+  t[H-5][16] = TILE.GRASS; t[H-5][17] = TILE.GRASS; t[H-5][18] = TILE.GRASS;
+  t[H-4][16] = TILE.GROUND; t[H-4][17] = TILE.GROUND; t[H-4][18] = TILE.GROUND;
+  for (let x = 20; x <= 23; x++) { t[H-1][x] = 0; t[H-2][x] = 0; t[H-3][x] = 0; }
+  t[H-1][20] = TILE.LAVA; t[H-1][21] = TILE.LAVA; t[H-1][22] = TILE.LAVA; t[H-1][23] = TILE.LAVA;
+  t[H-5][21] = TILE.PLATFORM; t[H-5][22] = TILE.PLATFORM;
+  t[H-7][20] = TILE.PLATFORM; t[H-7][21] = TILE.PLATFORM;
+  for (let y = H-6; y <= H-3; y++) { t[y][30] = TILE.BRICK; t[y][31] = TILE.BRICK; }
+  t[H-6][33] = TILE.PLATFORM; t[H-6][34] = TILE.PLATFORM;
+  t[H-8][36] = TILE.PLATFORM; t[H-8][37] = TILE.PLATFORM;
+  t[H-10][39] = TILE.PLATFORM; t[H-10][40] = TILE.PLATFORM; t[H-10][41] = TILE.PLATFORM;
+  for (let x = 35; x <= 38; x++) t[H-3][x] = TILE.GRASS;
+  t[H-4][36] = TILE.SPIKE; t[H-4][37] = TILE.SPIKE;
+  for (let x = 42; x < 55; x++) t[H-3][x] = TILE.GRASS;
+  for (let i = 0; i < 5; i++) {
+    for (let y = H-3-i; y <= H-3; y++) t[y][50+i] = TILE.STONE;
+  }
+  // Item blocks (4 blocks = fire, speed, shield, superjump)
+  t[H-7][5] = TILE.MUSHROOM_BLOCK;
+  t[H-7][27] = TILE.MUSHROOM_BLOCK;
+  t[H-6][44] = TILE.MUSHROOM_BLOCK;
+  t[H-5][48] = TILE.MUSHROOM_BLOCK;
+
+  return {
+    width: W, height: H, tiles: t,
+    spawn: { x: 2*8, y: (H-4)*8 },
+    exit: { x: 54*8, y: (H-9)*8, w: 8, h: 16 },
+    enemies: [
+      { type:'slime', x:14*8, y:(H-4)*8, minX:13*8, maxX:19*8 },
+      { type:'slime', x:26*8, y:(H-4)*8, minX:24*8, maxX:29*8 },
+      { type:'bat',   x:32*8, y:(H-9)*8, minX:28*8, maxX:34*8 },
+      { type:'slime', x:44*8, y:(H-4)*8, minX:42*8, maxX:49*8 },
+    ],
+    coins: [
+      {x:9*8+2,y:(H-7)*8},{x:11*8+2,y:(H-7)*8},{x:17*8,y:(H-7)*8},
+      {x:21*8,y:(H-9)*8},{x:33*8,y:(H-8)*8},{x:36*8,y:(H-10)*8},
+      {x:40*8,y:(H-12)*8},{x:45*8,y:(H-5)*8},{x:47*8,y:(H-5)*8},
+    ],
+    bg: { sky1:'#2a1a4a', sky2:'#0e0820', stars:true, moon:true, trees:true },
+    name: 'Dark Forest',
+  };
+}
+
+function createLevel2() {
+  const W = 70, H = 22;
+  const t = Array.from({length: H}, () => Array(W).fill(0));
+  for (let x = 0; x < W; x++) {
+    t[H-1][x] = TILE.STONE; t[H-2][x] = TILE.STONE;
+    t[0][x] = TILE.STONE; t[1][x] = TILE.STONE;
+  }
+  for (let x = 0; x < W; x++) {
+    if ((x >= 10 && x <= 14) || (x >= 25 && x <= 28) || (x >= 45 && x <= 50)) continue;
+    t[H-3][x] = TILE.STONE;
+  }
+  for (let x = 10; x <= 14; x++) { t[H-1][x] = TILE.LAVA; t[H-2][x] = TILE.LAVA; t[H-3][x] = 0; }
+  for (let x = 25; x <= 28; x++) { t[H-1][x] = TILE.LAVA; t[H-2][x] = TILE.LAVA; t[H-3][x] = 0; }
+  for (let x = 45; x <= 50; x++) { t[H-1][x] = TILE.LAVA; t[H-2][x] = TILE.LAVA; t[H-3][x] = 0; }
+  t[H-5][11] = TILE.PLATFORM; t[H-5][12] = TILE.PLATFORM; t[H-5][13] = TILE.PLATFORM;
+  t[H-6][26] = TILE.PLATFORM; t[H-6][27] = TILE.PLATFORM;
+  t[H-8][25] = TILE.PLATFORM; t[H-8][26] = TILE.PLATFORM;
+  t[H-5][46] = TILE.PLATFORM; t[H-5][47] = TILE.PLATFORM;
+  t[H-7][48] = TILE.PLATFORM; t[H-7][49] = TILE.PLATFORM;
+  t[H-9][47] = TILE.PLATFORM; t[H-9][48] = TILE.PLATFORM;
+  for (let x = 18; x < 24; x++) { t[H-4][x] = TILE.STONE; t[H-5][x] = TILE.STONE; }
+  for (let y = 3; y < H-3; y++) { t[y][35] = TILE.BRICK; t[y][55] = TILE.BRICK; }
+  t[H-4][35] = 0; t[H-5][35] = 0; t[H-6][35] = 0;
+  t[H-4][55] = 0; t[H-5][55] = 0; t[H-6][55] = 0;
+  t[H-8][30] = TILE.PLATFORM; t[H-8][31] = TILE.PLATFORM; t[H-8][32] = TILE.PLATFORM;
+  t[H-10][33] = TILE.PLATFORM; t[H-10][34] = TILE.PLATFORM;
+  t[H-12][36] = TILE.PLATFORM; t[H-12][37] = TILE.PLATFORM; t[H-12][38] = TILE.PLATFORM;
+  // Spikes removed from level 2
+  for (let x = 60; x < 68; x++) t[H-3][x] = TILE.STONE;
+  for (let i = 0; i < 4; i++) { for (let y = H-3-i; y <= H-3; y++) t[y][64+i] = TILE.STONE; }
+  // Mushroom blocks
+  t[H-7][6] = TILE.MUSHROOM_BLOCK;
+  t[H-7][22] = TILE.MUSHROOM_BLOCK;
+  t[H-6][40] = TILE.MUSHROOM_BLOCK;
+  t[H-5][57] = TILE.MUSHROOM_BLOCK;
+
+  return {
+    width: W, height: H, tiles: t,
+    spawn: { x:2*8, y:(H-4)*8 },
+    exit: { x:67*8, y:(H-8)*8, w:8, h:16 },
+    enemies: [
+      { type:'slime', x:7*8, y:(H-4)*8, minX:3*8, maxX:9*8 },
+      { type:'bat', x:12*8, y:(H-8)*8, minX:10*8, maxX:16*8 },
+      { type:'slime', x:20*8, y:(H-6)*8, minX:18*8, maxX:23*8 },
+      { type:'bat', x:28*8, y:(H-10)*8, minX:25*8, maxX:32*8 },
+      { type:'slime', x:40*8, y:(H-4)*8, minX:36*8, maxX:44*8 },
+      { type:'bat', x:48*8, y:(H-10)*8, minX:45*8, maxX:52*8 },
+      { type:'slime', x:58*8, y:(H-4)*8, minX:56*8, maxX:63*8 },
+    ],
+    coins: [
+      {x:12*8,y:(H-7)*8},{x:20*8,y:(H-8)*8},{x:22*8,y:(H-8)*8},
+      {x:26*8,y:(H-10)*8},{x:31*8,y:(H-10)*8},{x:37*8,y:(H-14)*8},
+      {x:47*8,y:(H-11)*8},{x:52*8,y:(H-5)*8},{x:62*8,y:(H-5)*8},{x:65*8,y:(H-7)*8},
+    ],
+    bg: { sky1:'#1a1a1a', sky2:'#0a0505', stars:false, crystals:true },
+    name: 'Lava Caves',
+  };
+}
+
+function createLevel3() {
+  const W = 80, H = 24;
+  const t = Array.from({length: H}, () => Array(W).fill(0));
+  for (let x = 0; x < W; x++) { t[H-1][x] = TILE.WATER; t[H-2][x] = TILE.WATER; }
+  for (let x = 0; x < 6; x++) { t[H-5][x] = TILE.GRASS; t[H-4][x] = TILE.GROUND; t[H-3][x] = TILE.GROUND; }
+  const plats = [
+    [8,H-6,3],[12,H-8,2],[15,H-6,3],[19,H-9,2],[22,H-7,3],
+    [26,H-10,2],[29,H-8,3],[33,H-11,2],[36,H-9,3],[40,H-12,2],
+    [43,H-10,3],[47,H-8,2],[50,H-11,3],[54,H-9,2],[57,H-7,3],
+    [61,H-10,2],[64,H-8,3],[68,H-6,2],[71,H-8,3],[75,H-5,4],
+  ];
+  for (const [px,py,pw] of plats) {
+    for (let x = px; x < px+pw; x++) { t[py][x] = TILE.GRASS; t[py+1][x] = TILE.GROUND; }
+  }
+  for (let y = H-8; y <= H-3; y++) t[y][35] = TILE.BRICK;
+  for (let y = H-10; y <= H-3; y++) { t[y][52] = TILE.BRICK; t[y][53] = TILE.BRICK; }
+  t[H-7][41] = TILE.SPIKE; t[H-7][42] = TILE.SPIKE; t[H-6][60] = TILE.SPIKE;
+  t[H-13][44] = TILE.PLATFORM; t[H-13][45] = TILE.PLATFORM;
+  t[H-14][62] = TILE.PLATFORM; t[H-14][63] = TILE.PLATFORM;
+  t[H-15][30] = TILE.PLATFORM; t[H-15][31] = TILE.PLATFORM;
+  t[H-16][34] = TILE.PLATFORM; t[H-16][35] = TILE.PLATFORM;
+  // Mushroom blocks
+  t[H-8][3] = TILE.MUSHROOM_BLOCK;
+  t[H-12][23] = TILE.MUSHROOM_BLOCK;
+  t[H-14][43] = TILE.MUSHROOM_BLOCK;
+  t[H-10][65] = TILE.MUSHROOM_BLOCK;
+
+  return {
+    width: W, height: H, tiles: t,
+    spawn: { x:2*8, y:(H-6)*8 },
+    exit: { x:76*8, y:(H-6)*8, w:8, h:16 },
+    enemies: [
+      { type:'bat', x:10*8, y:(H-10)*8, minX:8*8, maxX:15*8 },
+      { type:'slime', x:16*8, y:(H-7)*8, minX:15*8, maxX:17*8 },
+      { type:'bat', x:24*8, y:(H-12)*8, minX:22*8, maxX:30*8 },
+      { type:'bat', x:35*8, y:(H-14)*8, minX:33*8, maxX:40*8 },
+      { type:'slime', x:44*8, y:(H-11)*8, minX:43*8, maxX:45*8 },
+      { type:'bat', x:50*8, y:(H-14)*8, minX:47*8, maxX:55*8 },
+      { type:'bat', x:60*8, y:(H-12)*8, minX:57*8, maxX:65*8 },
+      { type:'slime', x:65*8, y:(H-9)*8, minX:64*8, maxX:66*8 },
+      { type:'bat', x:72*8, y:(H-11)*8, minX:68*8, maxX:76*8 },
+    ],
+    coins: [
+      {x:9*8,y:(H-8)*8},{x:13*8,y:(H-10)*8},{x:20*8,y:(H-11)*8},
+      {x:27*8,y:(H-12)*8},{x:31*8,y:(H-17)*8},{x:37*8,y:(H-11)*8},
+      {x:44*8,y:(H-15)*8},{x:51*8,y:(H-13)*8},{x:58*8,y:(H-9)*8},
+      {x:63*8,y:(H-16)*8},{x:69*8,y:(H-8)*8},{x:74*8,y:(H-10)*8},
+    ],
+    bg: { sky1:'#6688cc', sky2:'#3355aa', stars:false, clouds:true, mountains:true },
+    name: 'Sky Islands',
+  };
+}
+
+const LEVELS = [createLevel1, createLevel2, createLevel3];
+
+// --- GAME STATE ---
+let state = 'menu';
+let selectedChar = 0;
+let currentLevel = 0;
+let level = null;
+let score = 0;
+let lives = 3;
+let deathTimer = 0;
+let levelCompleteTimer = 0;
+
+// Player
+let player = {
+  x:0, y:0, vx:0, vy:0, w:10, h:12,
+  onGround:false, facing:1,
+  animFrame:0, animTimer:0, invincible:0,
+  power:null, // 'fire','speed','shield','superjump' or null
+  powerTimer:0,
+  shieldHit:false,
+  canDoubleJump:true,
+  hasDoubleJumped:false,
+  lamaMode:false, // secret invincibility mode
+  crouching:false, // shift to crouch
+  normalH:12, crouchH:7,
+};
+
+// Fireballs
+let fireballs = [];
+
+// Camera
+let camX = 0, camY = 0;
+
+// Runtime objects
+let enemies = [];
+let coins = [];
+let items = []; // spawned power-up items
+
+// Input
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyA','KeyS','KeyD','KeyF','KeyE','ShiftLeft','ShiftRight'].includes(e.code))
+    e.preventDefault();
+
+  if (state === 'menu') {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') selectedChar = (selectedChar + 2) % 3;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') selectedChar = (selectedChar + 1) % 3;
+    if (e.code === 'Space' || e.code === 'Enter') startGame();
+  }
+  if (state === 'dead' && deathTimer <= 0) {
+    if (e.code === 'Space' || e.code === 'Enter') {
+      if (lives > 0) respawn();
+      else { lives = 3; respawn(); }
+    }
+  }
+  if (state === 'levelcomplete' && levelCompleteTimer <= 0) {
+    if (e.code === 'Space' || e.code === 'Enter') nextLevel();
+  }
+  if (state === 'gamecomplete') {
+    if (e.code === 'Space' || e.code === 'Enter') {
+      state = 'menu'; lives = 3; score = 0; currentLevel = 0;
+    }
+  }
+  // Jump / Double jump with Space
+  if (state === 'playing' && (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW')) {
+    if (player.onGround) {
+      // normal jump handled in update
+    } else if (!player.hasDoubleJumped && player.canDoubleJump) {
+      player.vy = -2.0; // double jump (slightly weaker)
+      player.hasDoubleJumped = true;
+    }
+  }
+  // Use power with F/E key
+  if (state === 'playing' && player.power === 'fire' && (e.code === 'KeyF' || e.code === 'KeyE')) {
+    shootFireball();
+  }
+  // Lama mode toggle (secret)
+  if (e.key === 'ü' || e.key === 'Ü') {
+    player.lamaMode = !player.lamaMode;
+  }
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// Mouse click to use power
+canvas.addEventListener('mousedown', e => {
+  if (e.button === 0 && state === 'playing' && player.power) {
+    usePower();
+  }
+});
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+function usePower() {
+  if (player.power === 'fire') {
+    shootFireball();
+  } else if (player.power === 'speed') {
+    // Speed burst - instant boost
+    player.vx = player.facing * 3.0;
+  } else if (player.power === 'shield') {
+    // Shield slam - push away/kill nearby enemies
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      const dx = e.x - player.x;
+      const dy = e.y - player.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 40) {
+        e.alive = false;
+        score += 100;
+      }
+    }
+    player.invincible = 30;
+  } else if (player.power === 'superjump') {
+    // Instant super jump even in air
+    player.vy = -3.5;
+  }
+}
+
+function shootFireball() {
+  if (fireballs.length >= 3) return; // max 3 on screen
+  fireballs.push({
+    x: player.x + (player.facing === 1 ? player.w : -6),
+    y: player.y + 4,
+    vx: player.facing * 2.0,
+    vy: 0,
+    life: 120,
+  });
+}
+
+function startGame() {
+  currentLevel = 0;
+  lives = 3;
+  score = 0;
+  loadLevel(currentLevel);
+  state = 'playing';
+}
+
+function loadLevel(idx) {
+  level = LEVELS[idx]();
+  player.x = level.spawn.x;
+  player.y = level.spawn.y;
+  player.vx = 0; player.vy = 0;
+  player.onGround = false;
+  player.facing = 1;
+  player.invincible = 0;
+  player.power = null;
+  player.powerTimer = 0;
+  player.shieldHit = false;
+  player.canDoubleJump = true;
+  player.hasDoubleJumped = false;
+  player.crouching = false;
+  player.h = player.normalH;
+  fireballs = [];
+  enemies = level.enemies.map(e => ({
+    ...e, alive:true, vx: 0.3, animFrame:0, animTimer:0, startY:e.y,
+  }));
+  coins = level.coins.map(c => ({ ...c, collected:false, animTimer:0 }));
+  items = [];
+  level.itemBlocksHit = {};
+  level.itemBlockCounter = 0;
+  lives = 3;
+}
+
+function respawn() {
+  // Stay in same level, just reset position
+  player.x = level.spawn.x;
+  player.y = level.spawn.y;
+  player.vx = 0; player.vy = 0;
+  player.onGround = false;
+  player.invincible = 90;
+  player.power = null;
+  player.powerTimer = 0;
+  player.shieldHit = false;
+  player.canDoubleJump = true;
+  player.hasDoubleJumped = false;
+  player.crouching = false;
+  player.h = player.normalH;
+  fireballs = [];
+  state = 'playing';
+}
+
+function nextLevel() {
+  currentLevel++;
+  if (currentLevel >= LEVELS.length) {
+    state = 'gamecomplete';
+  } else {
+    loadLevel(currentLevel);
+    state = 'playing';
+  }
+}
+
+// --- COLLISION ---
+function getTile(tx, ty) {
+  if (!level) return 0;
+  if (tx < 0 || tx >= level.width || ty < 0 || ty >= level.height) return 0;
+  return level.tiles[ty][tx];
+}
+
+function isSolid(tx, ty) {
+  const tile = getTile(tx, ty);
+  return tile === TILE.GROUND || tile === TILE.GRASS || tile === TILE.STONE ||
+         tile === TILE.BRICK || tile === TILE.PLATFORM || tile === TILE.MUSHROOM_BLOCK;
+}
+
+function isDangerous(tx, ty) {
+  const tile = getTile(tx, ty);
+  return tile === TILE.SPIKE || tile === TILE.LAVA;
+}
+
+function checkTileCollision(x, y, w, h) {
+  const left = Math.floor(x / 8);
+  const right = Math.floor((x + w - 1) / 8);
+  const top = Math.floor(y / 8);
+  const bottom = Math.floor((y + h - 1) / 8);
+  for (let ty = top; ty <= bottom; ty++)
+    for (let tx = left; tx <= right; tx++)
+      if (isSolid(tx, ty)) return true;
+  return false;
+}
+
+function checkDanger(x, y, w, h) {
+  const left = Math.floor(x / 8);
+  const right = Math.floor((x + w - 1) / 8);
+  const top = Math.floor(y / 8);
+  const bottom = Math.floor((y + h - 1) / 8);
+  for (let ty = top; ty <= bottom; ty++)
+    for (let tx = left; tx <= right; tx++)
+      if (isDangerous(tx, ty) || getTile(tx, ty) === TILE.WATER) return true;
+  return false;
+}
+
+// Check if player hit an item block from below
+function checkItemBlockHit() {
+  if (player.vy >= 0) return;
+  const headY = Math.floor(player.y / 8);
+  const left = Math.floor((player.x + 2) / 8);
+  const right = Math.floor((player.x + player.w - 3) / 8);
+  for (let tx = left; tx <= right; tx++) {
+    if (getTile(tx, headY) === TILE.MUSHROOM_BLOCK) {
+      const key = `${tx},${headY}`;
+      if (!level.itemBlocksHit[key]) {
+        level.itemBlocksHit[key] = true;
+        level.tiles[headY][tx] = TILE.PLATFORM;
+        // Pick item type based on block counter (cycles through types)
+        const itemType = ITEM_TYPES[level.itemBlockCounter % ITEM_TYPES.length];
+        level.itemBlockCounter++;
+        items.push({
+          x: tx * 8, y: headY * 8 - 10,
+          vx: 0.3, vy: -1.5,
+          alive: true,
+          type: itemType,
+        });
+      }
+    }
+  }
+}
+
+// --- UPDATE ---
+function update() {
+  if (state !== 'playing') {
+    if (state === 'dead') deathTimer = Math.max(0, deathTimer - 1);
+    if (state === 'levelcomplete') levelCompleteTimer = Math.max(0, levelCompleteTimer - 1);
+    return;
+  }
+
+  // Player movement (slower)
+  const moveSpeed = 0.6;
+  const jumpForce = -2.3;
+  const gravity = 0.1;
+  const maxFall = 2.2;
+
+  // Crouch (Shift)
+  const wantsCrouch = keys['ShiftLeft'] || keys['ShiftRight'];
+  if (wantsCrouch && !player.crouching) {
+    player.crouching = true;
+    player.y += (player.normalH - player.crouchH); // adjust position so feet stay
+    player.h = player.crouchH;
+  } else if (!wantsCrouch && player.crouching) {
+    // Check if we can stand up (is there space above?)
+    const testY = player.y - (player.normalH - player.crouchH);
+    if (!checkTileCollision(player.x + 1, testY, player.w - 2, player.normalH)) {
+      player.crouching = false;
+      player.y = testY;
+      player.h = player.normalH;
+    }
+  }
+
+  let moveX = 0;
+  if (keys['ArrowLeft'] || keys['KeyA']) moveX = -1;
+  if (keys['ArrowRight'] || keys['KeyD']) moveX = 1;
+  const crouchSlow = player.crouching ? 0.5 : 1.0;
+  const actualSpeed = (player.power === 'speed' ? moveSpeed * 1.6 : moveSpeed) * crouchSlow;
+  player.vx = moveX * actualSpeed;
+  if (moveX !== 0) player.facing = moveX;
+
+  // Jump (first jump from ground)
+  if ((keys['ArrowUp'] || keys['KeyW'] || keys['Space']) && player.onGround) {
+    player.vy = player.power === 'superjump' ? jumpForce * 1.5 : jumpForce;
+    player.onGround = false;
+    player.hasDoubleJumped = false;
+  }
+
+  player.vy = Math.min(player.vy + gravity, maxFall);
+
+  // Move X
+  player.x += player.vx;
+  if (checkTileCollision(player.x + 1, player.y, player.w - 2, player.h)) {
+    if (player.vx > 0) player.x = Math.floor((player.x + player.w - 1) / 8) * 8 - player.w;
+    else if (player.vx < 0) player.x = Math.ceil(player.x / 8) * 8;
+    player.vx = 0;
+  }
+
+  // Move Y
+  player.y += player.vy;
+  player.onGround = false;
+  if (checkTileCollision(player.x + 1, player.y, player.w - 2, player.h)) {
+    if (player.vy > 0) {
+      player.y = Math.floor((player.y + player.h - 1) / 8) * 8 - player.h;
+      player.onGround = true;
+      player.hasDoubleJumped = false; // reset double jump on landing
+    } else if (player.vy < 0) {
+      // Check item block BEFORE correcting position (head is still inside the block)
+      checkItemBlockHit();
+      player.y = Math.ceil(player.y / 8) * 8;
+    }
+    player.vy = 0;
+  }
+
+  // Danger
+  if (checkDanger(player.x + 2, player.y + 2, player.w - 4, player.h - 2) && player.invincible <= 0) {
+    if (player.power === 'shield' && !player.shieldHit) {
+      player.shieldHit = true;
+      player.power = null;
+      player.invincible = 60;
+      player.vy = -2.0;
+    } else {
+      die(); return;
+    }
+  }
+  if (player.y > level.height * 8 + 20) { die(); return; }
+
+  // Walk animation (slower)
+  if (Math.abs(player.vx) > 0.1) {
+    player.animTimer++;
+    if (player.animTimer > 8) { player.animTimer = 0; player.animFrame = (player.animFrame + 1) % 3; }
+  } else { player.animFrame = 0; player.animTimer = 0; }
+
+  if (player.invincible > 0) player.invincible--;
+
+  // Power timer
+  if (player.power) {
+    player.powerTimer--;
+    if (player.powerTimer <= 0) {
+      player.power = null;
+      player.shieldHit = false;
+    }
+  }
+
+  // Update enemies (SLOWER + BLOCK COLLISION)
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    e.animTimer++;
+    if (e.animTimer > 15) { e.animTimer = 0; e.animFrame = 1 - e.animFrame; }
+
+    if (e.type === 'slime') {
+      // Try move X
+      const nextX = e.x + e.vx;
+      // Check wall collision (left/right side of slime, 10px wide, 7px tall)
+      const checkX = e.vx > 0 ? nextX + 9 : nextX;
+      const slimeTopTile = Math.floor(e.y / 8);
+      const slimeBotTile = Math.floor((e.y + 6) / 8);
+      const slimeXTile = Math.floor(checkX / 8);
+      let hitWall = false;
+      for (let ty = slimeTopTile; ty <= slimeBotTile; ty++) {
+        if (isSolid(slimeXTile, ty)) { hitWall = true; break; }
+      }
+      if (hitWall || nextX <= e.minX || nextX >= e.maxX) {
+        e.vx = -e.vx;
+      } else {
+        e.x = nextX;
+      }
+      // Gravity - check below
+      const belowY = e.y + 7;
+      const belowTileL = Math.floor((e.x + 2) / 8);
+      const belowTileR = Math.floor((e.x + 7) / 8);
+      const belowTileY = Math.floor((belowY + 1) / 8);
+      if (!isSolid(belowTileL, belowTileY) && !isSolid(belowTileR, belowTileY)) {
+        e.y += 0.8;
+      }
+    } else if (e.type === 'bat') {
+      // Bats fly but still can't go through walls
+      const nextX = e.x + e.vx;
+      const targetY = e.startY + Math.sin(Date.now() / 600 + e.startY) * 8;
+      // Check wall for bat
+      const checkBatX = e.vx > 0 ? nextX + 9 : nextX;
+      const batTileX = Math.floor(checkBatX / 8);
+      const batTileY = Math.floor((e.y + 3) / 8);
+      let batHitWall = isSolid(batTileX, batTileY);
+      if (batHitWall || nextX <= e.minX || nextX >= e.maxX) {
+        e.vx = -e.vx;
+      } else {
+        e.x = nextX;
+      }
+      // Vertical: move toward target but don't enter solid tiles
+      const yDir = targetY > e.y ? 0.5 : -0.5;
+      const nextBatY = e.y + yDir;
+      const batTileYCheck = Math.floor((yDir > 0 ? nextBatY + 6 : nextBatY) / 8);
+      const batTileXL = Math.floor((e.x + 1) / 8);
+      const batTileXR = Math.floor((e.x + 8) / 8);
+      if (!isSolid(batTileXL, batTileYCheck) && !isSolid(batTileXR, batTileYCheck)) {
+        e.y = nextBatY;
+      }
+    }
+
+    // Enemy-player collision
+    if (player.invincible <= 0) {
+      if (player.x + player.w > e.x + 1 && player.x < e.x + 9 &&
+          player.y + player.h > e.y + 1 && player.y < e.y + 6) {
+        if (player.vy > 0 && player.y + player.h < e.y + 4) {
+          e.alive = false; player.vy = -2.0; score += 100;
+        } else if (player.power === 'shield' && !player.shieldHit) {
+          // Shield absorbs one hit
+          player.shieldHit = true;
+          player.power = null;
+          player.invincible = 60;
+          player.vy = -2.0;
+        } else { die(); return; }
+      }
+    }
+  }
+
+  // Update fireballs
+  for (let i = fireballs.length - 1; i >= 0; i--) {
+    const fb = fireballs[i];
+    fb.x += fb.vx;
+    fb.vy += 0.05;
+    fb.y += fb.vy;
+    fb.life--;
+
+    // Bounce on ground
+    if (checkTileCollision(fb.x, fb.y, 6, 6)) {
+      if (fb.vy > 0) { fb.vy = -1.2; fb.y -= 2; }
+      else { fireballs.splice(i, 1); continue; }
+    }
+
+    // Hit enemy
+    let hitEnemy = false;
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      if (fb.x + 6 > e.x && fb.x < e.x + 10 && fb.y + 6 > e.y && fb.y < e.y + 7) {
+        e.alive = false;
+        score += 100;
+        hitEnemy = true;
+        break;
+      }
+    }
+    if (hitEnemy || fb.life <= 0 || fb.y > level.height * 8) {
+      fireballs.splice(i, 1);
+    }
+  }
+
+  // Collect coins
+  for (const c of coins) {
+    if (c.collected) continue;
+    c.animTimer++;
+    if (player.x + player.w > c.x && player.x < c.x + 7 &&
+        player.y + player.h > c.y && player.y < c.y + 7) {
+      c.collected = true; score += 50;
+    }
+  }
+
+  // Update & collect items
+  for (let i = items.length - 1; i >= 0; i--) {
+    const it = items[i];
+    if (!it.alive) { items.splice(i, 1); continue; }
+    // Physics
+    it.vy = Math.min(it.vy + 0.1, 2);
+    it.x += it.vx;
+    it.y += it.vy;
+    // Ground collision
+    if (checkTileCollision(it.x + 1, it.y + 4, 8, 4)) {
+      if (it.vy > 0) {
+        it.y = Math.floor((it.y + 7) / 8) * 8 - 8;
+        it.vy = 0;
+      }
+    }
+    // Wall bounce
+    const wallL = checkTileCollision(it.x, it.y + 1, 1, 6);
+    const wallR = checkTileCollision(it.x + 9, it.y + 1, 1, 6);
+    if (wallL || wallR) it.vx = -it.vx;
+    // Player pickup
+    if (player.x + player.w > it.x && player.x < it.x + 10 &&
+        player.y + player.h > it.y && player.y < it.y + 8) {
+      it.alive = false;
+      player.power = it.type;
+      player.shieldHit = false;
+      // Duration depends on type
+      if (it.type === 'fire') player.powerTimer = 600;       // 10s
+      else if (it.type === 'speed') player.powerTimer = 480;  // 8s
+      else if (it.type === 'shield') player.powerTimer = 900;  // 15s (one hit)
+      else if (it.type === 'superjump') player.powerTimer = 420; // 7s
+      score += 200;
+    }
+    if (it.y > level.height * 8 + 30) it.alive = false;
+  }
+
+  // Check exit
+  const ex = level.exit;
+  if (player.x + player.w > ex.x && player.x < ex.x + ex.w &&
+      player.y + player.h > ex.y && player.y < ex.y + ex.h) {
+    state = 'levelcomplete';
+    levelCompleteTimer = 60;
+    score += 500;
+  }
+
+  // Camera (smooth)
+  const targetCamX = player.x - COLS / 2 + player.w / 2;
+  const targetCamY = player.y - ROWS / 2 + player.h / 2;
+  camX += (targetCamX - camX) * 0.08;
+  camY += (targetCamY - camY) * 0.08;
+  camX = Math.max(0, Math.min(camX, level.width * 8 - COLS));
+  camY = Math.max(0, Math.min(camY, level.height * 8 - ROWS));
+}
+
+function die() {
+  if (player.lamaMode) return; // lama mode = unsterblich
+  lives--;
+  state = 'dead';
+  deathTimer = 40;
+}
+
+// --- BACKGROUND: Forest + Starry Sky + Moon (all levels) ---
+function drawBackground() {
+  // Night sky gradient
+  for (let y = 0; y < ROWS; y++) {
+    const t = y / ROWS;
+    const r = Math.floor(8 + t * 10);
+    const g = Math.floor(6 + t * 15);
+    const b = Math.floor(30 - t * 12);
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(0, y * PX, COLS * PX, PX);
+  }
+
+  // Stars (120 twinkling stars across the sky)
+  for (let i = 0; i < 120; i++) {
+    const sx = ((7919 * (i+1) + i * 131) % COLS);
+    const sy = ((6271 * (i+1) + i * 97) % Math.floor(ROWS * 0.55));
+    const twinkle = Math.sin(Date.now() / (500 + (i * 37) % 400) + i * 3.1) * 0.4 + 0.6;
+    const v = Math.floor(200 * twinkle);
+    // Different star colors
+    let sr = v, sg = v, sb = v;
+    if (i % 11 === 0) { sr = v; sg = Math.floor(v*0.8); sb = Math.floor(v*0.6); } // warm
+    else if (i % 13 === 0) { sr = Math.floor(v*0.7); sg = Math.floor(v*0.8); sb = v; } // cool
+    const size = (i % 9 === 0) ? 2 : 1;
+    ctx.fillStyle = `rgb(${sr},${sg},${sb})`;
+    ctx.fillRect(sx * PX, sy * PX, size * PX, size * PX);
+  }
+
+  // Moon (top right area)
+  const moonX = 125, moonY = 14;
+  // Moon glow (outer)
+  for (let ring = 4; ring >= 1; ring--) {
+    ctx.fillStyle = `rgba(220,220,180,${0.02 * ring})`;
+    ctx.beginPath();
+    ctx.arc(moonX * PX, moonY * PX, (7 + ring * 5) * PX, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Moon body
+  for (let r = -7; r <= 7; r++) {
+    for (let c = -7; c <= 7; c++) {
+      const dist2 = r*r + c*c;
+      if (dist2 <= 49) {
+        const dist = Math.sqrt(dist2) / 7;
+        const base = Math.floor(230 - dist * 50);
+        // Craters
+        const cr1 = (r+2)*(r+2)+(c-1)*(c-1);
+        const cr2 = (r-2)*(r-2)+(c+3)*(c+3);
+        const cr3 = (r-1)*(r-1)+(c-3)*(c-3);
+        const cr4 = (r+3)*(r+3)+(c+2)*(c+2);
+        let v = base;
+        if (cr1 <= 3) v -= 25;
+        else if (cr2 <= 2) v -= 20;
+        else if (cr3 <= 4) v -= 18;
+        else if (cr4 <= 2) v -= 22;
+        // Slight color tint
+        drawPx(moonX + c, moonY + r, `rgb(${v},${v},${Math.max(0,v-20)})`);
+      }
+    }
+  }
+
+  // --- Forest layers (parallax) ---
+  const parallax1 = camX * 0.1; // far trees
+  const parallax2 = camX * 0.25; // mid trees
+  const parallax3 = camX * 0.45; // near trees
+
+  // Far forest (dark, small, dense)
+  for (let i = 0; i < 100; i++) {
+    const tx = ((i * 7 + 3) * 4) - (parallax1 % 3000);
+    const baseY = ROWS - 18 - (i % 8) * 2;
+    const h = 10 + (i * 7) % 8;
+    // Trunk
+    ctx.fillStyle = '#0e0a06';
+    ctx.fillRect(Math.floor(tx + 2) * PX, baseY * PX, 2 * PX, (h + 2) * PX);
+    // Foliage (triangle shape)
+    for (let layer = 0; layer < 4; layer++) {
+      const w = 10 - layer * 2;
+      const fh = 3;
+      const fy = baseY - 2 - layer * 2.5;
+      ctx.fillStyle = `rgb(${10 + layer*3},${25 + layer*5 + (i%3)*3},${8 + layer*2})`;
+      ctx.fillRect(Math.floor(tx + 3 - w/2) * PX, Math.floor(fy) * PX, w * PX, fh * PX);
+    }
+  }
+
+  // Mid forest (medium detail)
+  for (let i = 0; i < 60; i++) {
+    const tx = ((i * 10 + 10) * 5) - (parallax2 % 3300);
+    const baseY = ROWS - 12 - (i % 6) * 3;
+    const h = 14 + (i * 11) % 10;
+    // Trunk
+    ctx.fillStyle = '#1a0e06';
+    ctx.fillRect(Math.floor(tx + 3) * PX, baseY * PX, 3 * PX, (h + 3) * PX);
+    // Branch stubs
+    if (i % 3 === 0) {
+      ctx.fillRect(Math.floor(tx + 1) * PX, (baseY + 4) * PX, 2 * PX, PX);
+      ctx.fillRect(Math.floor(tx + 6) * PX, (baseY + 6) * PX, 2 * PX, PX);
+    }
+    // Foliage (rounder, layered)
+    for (let layer = 0; layer < 4; layer++) {
+      const w = 12 - layer * 2;
+      const fh = 4 - (layer > 2 ? 1 : 0);
+      const fy = baseY - 3 - layer * 3;
+      const green = 30 + layer * 8 + (i % 4) * 4;
+      ctx.fillStyle = `rgb(${12 + layer*3},${green},${8 + layer*3})`;
+      ctx.fillRect(Math.floor(tx + 4.5 - w/2) * PX, Math.floor(fy) * PX, w * PX, fh * PX);
+    }
+    // Tree top point
+    ctx.fillStyle = `rgb(${20},${50 + (i%3)*5},${15})`;
+    ctx.fillRect(Math.floor(tx + 3) * PX, Math.floor(baseY - 15) * PX, 3 * PX, 2 * PX);
+  }
+
+  // Near forest (detailed, biggest)
+  for (let i = 0; i < 45; i++) {
+    const tx = ((i * 12 + 7) * 5) - (parallax3 % 3000);
+    const baseY = ROWS - 5 - (i % 5) * 3;
+    const h = 18 + (i * 13) % 12;
+    // Trunk with bark texture
+    for (let r = 0; r < h + 4; r++) {
+      const barkShade = ((r * 7 + i * 3) % 4);
+      ctx.fillStyle = `rgb(${30 + barkShade*4},${18 + barkShade*3},${8 + barkShade*2})`;
+      ctx.fillRect(Math.floor(tx + 3) * PX, (baseY + r) * PX, 4 * PX, PX);
+    }
+    // Roots
+    ctx.fillStyle = '#2a1a0a';
+    ctx.fillRect(Math.floor(tx + 1) * PX, (baseY + h + 2) * PX, 2 * PX, 2 * PX);
+    ctx.fillRect(Math.floor(tx + 7) * PX, (baseY + h + 2) * PX, 2 * PX, 2 * PX);
+    // Foliage (big round canopy)
+    for (let layer = 0; layer < 5; layer++) {
+      const w = 16 - layer * 2;
+      const fh = 4;
+      const fy = baseY - 4 - layer * 3;
+      const green = 35 + layer * 10 + (i % 3) * 5;
+      ctx.fillStyle = `rgb(${15 + layer*4},${green},${10 + layer*3})`;
+      ctx.fillRect(Math.floor(tx + 5 - w/2) * PX, Math.floor(fy) * PX, w * PX, fh * PX);
+    }
+    // Highlight on foliage (moonlight)
+    ctx.fillStyle = 'rgba(180,200,160,0.08)';
+    ctx.fillRect(Math.floor(tx + 2) * PX, Math.floor(baseY - 14) * PX, 6 * PX, 3 * PX);
+  }
+}
+
+function drawLevel_() {
+  if (!level) return;
+  const startTX = Math.max(0, Math.floor(camX / 8));
+  const endTX = Math.min(level.width - 1, Math.ceil((camX + COLS) / 8));
+  const startTY = Math.max(0, Math.floor(camY / 8));
+  const endTY = Math.min(level.height - 1, Math.ceil((camY + ROWS) / 8));
+
+  for (let ty = startTY; ty <= endTY; ty++)
+    for (let tx = startTX; tx <= endTX; tx++) {
+      const tile = level.tiles[ty][tx];
+      if (tile !== TILE.AIR) drawTile(tx, ty, tile, camX, camY);
+    }
+
+  // Exit door
+  const ex = level.exit;
+  const dx = ex.x - camX, dy = ex.y - camY;
+  for (let r = 0; r < 16; r++) {
+    for (let c = 0; c < 8; c++) {
+      if (c === 0 || c === 7 || r === 0) drawPx(dx+c, dy+r, '#ffdd44');
+      else drawPx(dx+c, dy+r, '#442200');
+    }
+  }
+  drawPx(dx+5, dy+9, '#ffdd44');
+  if (Math.sin(Date.now()/300) > 0) {
+    drawPx(dx+3, dy-3, '#ffdd44'); drawPx(dx+4, dy-3, '#ffdd44');
+    drawPx(dx+3, dy-4, '#ffdd44'); drawPx(dx+4, dy-4, '#ffdd44');
+    drawPx(dx+2, dy-2, '#ffdd44'); drawPx(dx+5, dy-2, '#ffdd44');
+  }
+}
+
+function drawPlayer() {
+  if (player.invincible > 0 && Math.floor(player.invincible / 4) % 2 === 0) return;
+
+  let sprite;
+  if (selectedChar === 0) sprite = makeCatFrame(player.animFrame);
+  else if (selectedChar === 1) sprite = makeDogFrame(player.animFrame);
+  else sprite = makeWolfFrame(player.animFrame);
+
+  // If crouching, only draw bottom half of sprite
+  if (player.crouching) {
+    sprite = sprite.slice(5); // cut off top rows
+  }
+
+  const px = Math.floor(player.x - camX);
+  const py = Math.floor(player.y - camY);
+
+  if (player.facing === -1) drawSprite(px, py, sprite.map(row => [...row].reverse()));
+  else drawSprite(px, py, sprite);
+
+  // Double jump indicator (small wing particles when available)
+  if (!player.onGround && !player.hasDoubleJumped) {
+    const wingAlpha = Math.sin(Date.now() / 100) * 0.3 + 0.5;
+    ctx.fillStyle = `rgba(200,220,255,${wingAlpha})`;
+    ctx.fillRect((px + 1) * PX, (py + 3) * PX, PX, 2 * PX);
+    ctx.fillRect((px + player.w - 2) * PX, (py + 3) * PX, PX, 2 * PX);
+  }
+
+  // Power glow effect
+  if (player.power) {
+    const glow = Math.sin(Date.now() / 150) * 0.3 + 0.5;
+    const glowColors = {
+      fire: `rgba(255,100,0,${glow*0.3})`,
+      speed: `rgba(255,220,0,${glow*0.3})`,
+      shield: `rgba(80,150,255,${glow*0.35})`,
+      superjump: `rgba(200,80,255,${glow*0.3})`,
+    };
+    ctx.fillStyle = glowColors[player.power] || 'rgba(255,255,255,0.2)';
+    ctx.fillRect((px - 1) * PX, (py - 1) * PX, (player.w + 2) * PX, (player.h + 2) * PX);
+    // Shield bubble
+    if (player.power === 'shield') {
+      ctx.strokeStyle = `rgba(100,180,255,${glow * 0.6})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc((px + 5) * PX, (py + 6) * PX, 8 * PX, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // Power timer bar
+    const maxTime = {fire:600, speed:480, shield:900, superjump:420};
+    const barW = Math.floor((player.powerTimer / (maxTime[player.power]||600)) * player.w);
+    const barColors = {fire:'#ff6600',speed:'#ffdd00',shield:'#4488ff',superjump:'#cc44ff'};
+    ctx.fillStyle = barColors[player.power] || '#ffffff';
+    ctx.fillRect(px * PX, (py - 2) * PX, barW * PX, PX);
+  }
+}
+
+function drawEnemies() {
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    const ex = Math.floor(e.x - camX);
+    const ey = Math.floor(e.y - camY);
+    if (ex < -10 || ex > COLS + 10 || ey < -10 || ey > ROWS + 10) continue;
+    let sprite = e.type === 'slime' ? makeSlimeFrame(e.animFrame) : makeBatFrame(e.animFrame);
+    if (e.vx < 0) drawSprite(ex, ey, sprite.map(row => [...row].reverse()));
+    else drawSprite(ex, ey, sprite);
+  }
+}
+
+function drawCoins() {
+  for (const c of coins) {
+    if (c.collected) continue;
+    const cx = Math.floor(c.x - camX), cy = Math.floor(c.y - camY);
+    if (cx < -8 || cx > COLS + 8) continue;
+    drawSprite(cx, cy, makeCoinFrame(Math.floor(c.animTimer / 20) % 2));
+  }
+}
+
+function drawItems() {
+  for (const it of items) {
+    if (!it.alive) continue;
+    const ix = Math.floor(it.x - camX), iy = Math.floor(it.y - camY);
+    const spriteFn = ITEM_SPRITES[it.type];
+    if (spriteFn) drawSprite(ix, iy, spriteFn());
+    // Floating glow effect
+    const glow = Math.sin(Date.now() / 200) * 0.3 + 0.4;
+    const colors = { fire:'rgba(255,100,0,', speed:'rgba(255,220,0,', shield:'rgba(80,150,255,', superjump:'rgba(200,80,255,' };
+    ctx.fillStyle = (colors[it.type] || 'rgba(255,255,255,') + glow + ')';
+    ctx.fillRect((ix - 1) * PX, (iy - 1) * PX, 12 * PX, 10 * PX);
+  }
+}
+
+function drawFireballs() {
+  const fbSprite = makeFireball();
+  for (const fb of fireballs) {
+    const fx = Math.floor(fb.x - camX), fy = Math.floor(fb.y - camY);
+    drawSprite(fx, fy, fbSprite);
+  }
+}
+
+function drawHUD() {
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, 0, COLS * PX, 14 * PX);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 14px monospace';
+  ctx.fillText(`SCORE: ${score}`, 8, 11 * PX);
+
+  // Hearts
+  for (let i = 0; i < lives; i++) {
+    const hx = COLS * PX - 70 + i * 20;
+    ctx.fillStyle = '#ff4444';
+    ctx.fillRect(hx, 3*PX, 6, 6);
+    ctx.fillRect(hx+8, 3*PX, 6, 6);
+    ctx.fillRect(hx-1, 3*PX+4, 16, 6);
+    ctx.fillRect(hx+1, 3*PX+10, 12, 4);
+    ctx.fillRect(hx+3, 3*PX+14, 8, 3);
+    ctx.fillRect(hx+5, 3*PX+17, 4, 2);
+  }
+
+  // Level name
+  ctx.fillStyle = '#aaaaaa';
+  ctx.font = '11px monospace';
+  ctx.fillText(`Level ${currentLevel + 1}: ${level.name}`, COLS * PX / 2 - 55, 11 * PX);
+
+  // Power indicator
+  if (player.power) {
+    const powerLabels = {
+      fire: { text:'FIRE [Click/F]', color:'#ff6600' },
+      speed: { text:'SPEED [Click=Boost]', color:'#ffdd00' },
+      shield: { text:'SHIELD [Click=Slam]', color:'#4488ff' },
+      superjump: { text:'JUMP [Click=Launch]', color:'#cc44ff' },
+    };
+    const p = powerLabels[player.power];
+    if (p) {
+      ctx.fillStyle = p.color;
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText(p.text, 8, 24 * PX);
+    }
+  }
+  // Lama mode indicator (subtle)
+  if (player.lamaMode) {
+    ctx.fillStyle = '#ff00ff';
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText('LAMA', COLS * PX - 35, 24 * PX);
+  }
+}
+
+function drawMenu() {
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Animated stars
+  for (let i = 0; i < 100; i++) {
+    const sx = (i * 37 + 7) % COLS;
+    const sy = (i * 53 + 13) % ROWS;
+    const b = Math.sin(Date.now() / (300 + i * 20) + i) * 0.4 + 0.6;
+    const c = Math.floor(200 * b);
+    drawPx(sx, sy, `rgb(${c},${c},${Math.min(255, c+40)})`);
+  }
+
+  // Title with shadow
+  ctx.fillStyle = '#332200';
+  ctx.font = 'bold 38px monospace';
+  ctx.fillText('PIXEL ADVENTURE', COLS * PX / 2 - 162, 26 * PX);
+  ctx.fillStyle = '#ffdd44';
+  ctx.font = 'bold 36px monospace';
+  ctx.fillText('PIXEL ADVENTURE', COLS * PX / 2 - 160, 25 * PX);
+
+  ctx.fillStyle = '#aaaacc';
+  ctx.font = '14px monospace';
+  ctx.fillText('Choose your character:', COLS * PX / 2 - 85, 40 * PX);
+
+  const charNames = ['CAT', 'DOG', 'WOLF'];
+  const charFuncs = [makeCatFrame, makeDogFrame, makeWolfFrame];
+
+  for (let i = 0; i < 3; i++) {
+    const cx = 40 + i * 45, cy = 55;
+    if (i === selectedChar) {
+      ctx.strokeStyle = '#ffdd44'; ctx.lineWidth = 2;
+      ctx.strokeRect((cx-5)*PX, (cy-5)*PX, 24*PX, 28*PX);
+      drawSprite(cx, cy, charFuncs[i](Math.floor(Date.now() / 250) % 3));
+    } else {
+      ctx.strokeStyle = '#444466'; ctx.lineWidth = 1;
+      ctx.strokeRect((cx-5)*PX, (cy-5)*PX, 24*PX, 28*PX);
+      drawSprite(cx, cy, charFuncs[i](0));
+    }
+    ctx.fillStyle = i === selectedChar ? '#ffdd44' : '#888888';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(charNames[i], (cx-1)*PX, (cy+18)*PX);
+  }
+
+  ctx.fillStyle = '#6666aa';
+  ctx.font = '11px monospace';
+  ctx.fillText('WASD / Arrows = Move & Jump', COLS*PX/2 - 110, 85*PX);
+  ctx.fillText('Space x2 = Double Jump', COLS*PX/2 - 90, 90*PX);
+  ctx.fillText('Shift = Crouch (shrink)', COLS*PX/2 - 95, 95*PX);
+  ctx.fillText('Left Click = Use Power', COLS*PX/2 - 90, 100*PX);
+  ctx.fillText('Hit blocks from below for items!', COLS*PX/2 - 120, 105*PX);
+
+  ctx.fillStyle = '#ffdd44';
+  ctx.font = 'bold 14px monospace';
+  if (Math.sin(Date.now() / 400) > 0) ctx.fillText('Press SPACE to start!', COLS*PX/2 - 90, 114*PX);
+}
+
+function drawDeathScreen() {
+  ctx.fillStyle = 'rgba(150,0,0,0.6)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 28px monospace';
+  ctx.fillText('YOU DIED!', COLS*PX/2 - 80, ROWS*PX/2 - 10);
+  if (deathTimer <= 0) {
+    ctx.font = '14px monospace';
+    if (lives > 0) {
+      ctx.fillText(`Lives left: ${lives}`, COLS*PX/2 - 55, ROWS*PX/2 + 20);
+      ctx.fillText('Press SPACE to continue', COLS*PX/2 - 90, ROWS*PX/2 + 45);
+    } else {
+      ctx.fillStyle = '#ff4444';
+      ctx.fillText('GAME OVER', COLS*PX/2 - 45, ROWS*PX/2 + 20);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(`Score: ${score}`, COLS*PX/2 - 40, ROWS*PX/2 + 40);
+      ctx.fillText('Press SPACE to retry', COLS*PX/2 - 80, ROWS*PX/2 + 60);
+    }
+  }
+}
+
+function drawLevelComplete() {
+  ctx.fillStyle = 'rgba(0,80,0,0.6)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#ffdd44';
+  ctx.font = 'bold 28px monospace';
+  ctx.fillText('LEVEL COMPLETE!', COLS*PX/2 - 120, ROWS*PX/2 - 10);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '16px monospace';
+  ctx.fillText(`Score: ${score}`, COLS*PX/2 - 40, ROWS*PX/2 + 20);
+  if (levelCompleteTimer <= 0 && Math.sin(Date.now()/300) > 0)
+    ctx.fillText('Press SPACE to continue', COLS*PX/2 - 95, ROWS*PX/2 + 50);
+}
+
+function drawGameComplete() {
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (let i = 0; i < 30; i++) {
+    const fx = (Math.sin(Date.now()/300+i*1.5)*0.4+0.5)*COLS;
+    const fy = (Math.cos(Date.now()/250+i*2.1)*0.3+0.3)*ROWS;
+    const colors = ['#ff4444','#44ff44','#4444ff','#ffff44','#ff44ff','#44ffff'];
+    drawPx(fx, fy, colors[i%6]);
+    drawPx(fx+1, fy, colors[(i+1)%6]);
+    drawPx(fx, fy+1, colors[(i+2)%6]);
+    drawPx(fx-1, fy, colors[(i+3)%6]);
+  }
+  ctx.fillStyle = '#ffdd44';
+  ctx.font = 'bold 32px monospace';
+  ctx.fillText('YOU WIN!', COLS*PX/2-70, ROWS*PX/2-20);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '18px monospace';
+  ctx.fillText(`Final Score: ${score}`, COLS*PX/2-70, ROWS*PX/2+15);
+  ctx.font = '14px monospace';
+  ctx.fillText('Congratulations!', COLS*PX/2-65, ROWS*PX/2+40);
+  if (Math.sin(Date.now()/400) > 0) {
+    ctx.fillStyle = '#aaaacc';
+    ctx.fillText('Press SPACE for menu', COLS*PX/2-80, ROWS*PX/2+65);
+  }
+}
+
+// --- MAIN LOOP ---
+function gameLoop() {
+  update();
+  if (state === 'menu') {
+    drawMenu();
+  } else if (state === 'playing' || state === 'dead' || state === 'levelcomplete') {
+    drawBackground();
+    drawLevel_();
+    drawCoins();
+    drawItems();
+    drawFireballs();
+    drawEnemies();
+    drawPlayer();
+    drawHUD();
+    if (state === 'dead') drawDeathScreen();
+    if (state === 'levelcomplete') drawLevelComplete();
+  } else if (state === 'gamecomplete') {
+    drawGameComplete();
+  }
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>
