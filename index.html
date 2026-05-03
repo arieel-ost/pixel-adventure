@@ -890,7 +890,280 @@ function createLevel6() {
   };
 }
 
-const LEVELS = [createLevel1, createLevel2, createLevel3, createLevel4, createLevel5, createLevel6];
+function createLevel7() {
+  // Frozen Peaks - icy platforms, slippery, wind gaps
+  const W = 80, H = 24;
+  const t = Array.from({length: H}, () => Array(W).fill(0));
+  // Snow ground
+  for (let x = 0; x < W; x++) { t[H-1][x] = TILE.STONE; t[H-2][x] = TILE.STONE; }
+  // Ground with gaps
+  for (let x = 0; x < W; x++) {
+    if ((x >= 12 && x <= 16) || (x >= 30 && x <= 35) || (x >= 50 && x <= 55) || (x >= 68 && x <= 72)) continue;
+    t[H-3][x] = TILE.GRASS;
+  }
+  // Water below gaps
+  for (const [s,e] of [[12,16],[30,35],[50,55],[68,72]]) {
+    for (let x = s; x <= e; x++) { t[H-1][x] = TILE.WATER; t[H-2][x] = TILE.WATER; t[H-3][x] = 0; }
+  }
+  // Ice platforms (stepping stones)
+  t[H-5][13] = TILE.PLATFORM; t[H-5][15] = TILE.PLATFORM;
+  t[H-6][31] = TILE.PLATFORM; t[H-6][33] = TILE.PLATFORM; t[H-8][32] = TILE.PLATFORM;
+  t[H-5][51] = TILE.PLATFORM; t[H-7][53] = TILE.PLATFORM; t[H-5][55] = TILE.PLATFORM;
+  t[H-6][69] = TILE.PLATFORM; t[H-6][71] = TILE.PLATFORM;
+  // Mountain terrain - ascending sections
+  for (let x = 4; x < 10; x++) { t[H-4][x] = TILE.STONE; }
+  for (let x = 20; x < 28; x++) { t[H-5][x] = TILE.STONE; t[H-4][x] = TILE.STONE; }
+  for (let x = 38; x < 48; x++) { t[H-4][x] = TILE.STONE; }
+  for (let i = 0; i < 4; i++) { for (let y = H-4-i; y <= H-3; y++) t[y][40+i] = TILE.STONE; }
+  for (let x = 58; x < 66; x++) { t[H-5][x] = TILE.STONE; t[H-4][x] = TILE.STONE; }
+  // High altitude platforms
+  t[H-8][6] = TILE.PLATFORM; t[H-8][7] = TILE.PLATFORM;
+  t[H-9][22] = TILE.PLATFORM; t[H-9][23] = TILE.PLATFORM; t[H-9][24] = TILE.PLATFORM;
+  t[H-10][42] = TILE.PLATFORM; t[H-10][43] = TILE.PLATFORM;
+  t[H-8][60] = TILE.PLATFORM; t[H-8][61] = TILE.PLATFORM;
+  // Exit staircase
+  for (let i = 0; i < 4; i++) { for (let y = H-3-i; y <= H-3; y++) t[y][74+i] = TILE.STONE; }
+  // Mushroom blocks
+  t[H-7][5] = TILE.MUSHROOM_BLOCK;
+  t[H-8][24] = TILE.MUSHROOM_BLOCK;
+  t[H-7][44] = TILE.MUSHROOM_BLOCK;
+  t[H-8][61] = TILE.MUSHROOM_BLOCK;
+  t[H-5][74] = TILE.MUSHROOM_BLOCK;
+
+  return {
+    width: W, height: H, tiles: t,
+    spawn: { x:2*8, y:(H-4)*8 },
+    exit: { x:77*8, y:(H-8)*8, w:8, h:16 },
+    enemies: [
+      { type:'slime', x:6*8, y:(H-5)*8, minX:4*8, maxX:9*8 },
+      { type:'bat', x:14*8, y:(H-8)*8, minX:12*8, maxX:17*8 },
+      { type:'slime', x:23*8, y:(H-6)*8, minX:20*8, maxX:27*8 },
+      { type:'bat', x:33*8, y:(H-10)*8, minX:30*8, maxX:36*8 },
+      { type:'slime', x:42*8, y:(H-5)*8, minX:38*8, maxX:47*8 },
+      { type:'bat', x:46*8, y:(H-8)*8, minX:43*8, maxX:49*8 },
+      { type:'bat', x:53*8, y:(H-10)*8, minX:50*8, maxX:56*8 },
+      { type:'slime', x:62*8, y:(H-6)*8, minX:58*8, maxX:65*8 },
+      { type:'bat', x:70*8, y:(H-9)*8, minX:68*8, maxX:73*8 },
+    ],
+    coins: [
+      {x:7*8,y:(H-10)*8},{x:14*8,y:(H-7)*8},{x:23*8,y:(H-11)*8},
+      {x:32*8,y:(H-10)*8},{x:43*8,y:(H-12)*8},{x:52*8,y:(H-7)*8},
+      {x:61*8,y:(H-10)*8},{x:70*8,y:(H-8)*8},{x:76*8,y:(H-6)*8},
+    ],
+    bg: { sky1:'#3a4a6a', sky2:'#1a2545', stars:true, moon:true, trees:true },
+    name: 'Frozen Peaks',
+  };
+}
+
+function createLevel8() {
+  // Mushroom Forest - lots of item blocks, vertical exploration
+  const W = 75, H = 26;
+  const t = Array.from({length: H}, () => Array(W).fill(0));
+  for (let x = 0; x < W; x++) { t[H-1][x] = TILE.GROUND; t[H-2][x] = TILE.GROUND; t[H-3][x] = TILE.GRASS; }
+  // Lava gaps
+  for (const [s,e] of [[15,18],[35,39],[55,58]]) {
+    for (let x = s; x <= e; x++) { t[H-1][x] = TILE.LAVA; t[H-2][x] = TILE.LAVA; t[H-3][x] = 0; }
+  }
+  // Tree trunk pillars
+  for (const wx of [10,25,45,60]) {
+    for (let y = H-10; y < H-3; y++) t[y][wx] = TILE.BRICK;
+    t[H-11][wx-1] = TILE.GRASS; t[H-11][wx] = TILE.GRASS; t[H-11][wx+1] = TILE.GRASS;
+    t[H-12][wx] = TILE.GRASS;
+  }
+  // Platforms connecting trees
+  t[H-8][12] = TILE.PLATFORM; t[H-8][13] = TILE.PLATFORM;
+  t[H-9][18] = TILE.PLATFORM; t[H-9][19] = TILE.PLATFORM; t[H-9][20] = TILE.PLATFORM;
+  t[H-7][28] = TILE.PLATFORM; t[H-7][29] = TILE.PLATFORM;
+  t[H-10][32] = TILE.PLATFORM; t[H-10][33] = TILE.PLATFORM;
+  t[H-8][38] = TILE.PLATFORM; t[H-8][39] = TILE.PLATFORM;
+  t[H-6][42] = TILE.PLATFORM; t[H-6][43] = TILE.PLATFORM;
+  t[H-9][48] = TILE.PLATFORM; t[H-9][49] = TILE.PLATFORM;
+  t[H-7][52] = TILE.PLATFORM; t[H-7][53] = TILE.PLATFORM;
+  t[H-8][58] = TILE.PLATFORM; t[H-8][59] = TILE.PLATFORM;
+  t[H-6][63] = TILE.PLATFORM; t[H-6][64] = TILE.PLATFORM;
+  // Upper canopy platforms
+  t[H-14][15] = TILE.PLATFORM; t[H-14][16] = TILE.PLATFORM;
+  t[H-15][30] = TILE.PLATFORM; t[H-15][31] = TILE.PLATFORM;
+  t[H-13][50] = TILE.PLATFORM; t[H-13][51] = TILE.PLATFORM;
+  // Exit
+  for (let i = 0; i < 4; i++) { for (let y = H-3-i; y <= H-3; y++) t[y][70+i] = TILE.GROUND; }
+  t[H-4][70] = TILE.GRASS; t[H-5][71] = TILE.GRASS; t[H-6][72] = TILE.GRASS; t[H-7][73] = TILE.GRASS;
+  // Lots of mushroom blocks
+  t[H-6][5] = TILE.MUSHROOM_BLOCK; t[H-6][8] = TILE.MUSHROOM_BLOCK;
+  t[H-10][14] = TILE.MUSHROOM_BLOCK; t[H-7][22] = TILE.MUSHROOM_BLOCK;
+  t[H-10][33] = TILE.MUSHROOM_BLOCK; t[H-6][40] = TILE.MUSHROOM_BLOCK;
+  t[H-9][49] = TILE.MUSHROOM_BLOCK; t[H-6][56] = TILE.MUSHROOM_BLOCK;
+  t[H-7][66] = TILE.MUSHROOM_BLOCK;
+
+  return {
+    width: W, height: H, tiles: t,
+    spawn: { x:2*8, y:(H-4)*8 },
+    exit: { x:73*8, y:(H-8)*8, w:8, h:16 },
+    enemies: [
+      { type:'slime', x:6*8, y:(H-4)*8, minX:3*8, maxX:9*8 },
+      { type:'bat', x:16*8, y:(H-7)*8, minX:12*8, maxX:19*8 },
+      { type:'slime', x:22*8, y:(H-4)*8, minX:19*8, maxX:24*8 },
+      { type:'bat', x:30*8, y:(H-12)*8, minX:27*8, maxX:34*8 },
+      { type:'slime', x:37*8, y:(H-4)*8, minX:35*8, maxX:39*8 },
+      { type:'bat', x:42*8, y:(H-9)*8, minX:40*8, maxX:44*8 },
+      { type:'slime', x:50*8, y:(H-4)*8, minX:48*8, maxX:54*8 },
+      { type:'bat', x:56*8, y:(H-10)*8, minX:53*8, maxX:59*8 },
+      { type:'slime', x:63*8, y:(H-4)*8, minX:60*8, maxX:66*8 },
+      { type:'bat', x:68*8, y:(H-8)*8, minX:65*8, maxX:72*8 },
+    ],
+    coins: [
+      {x:5*8,y:(H-8)*8},{x:13*8,y:(H-10)*8},{x:16*8,y:(H-16)*8},
+      {x:22*8,y:(H-9)*8},{x:31*8,y:(H-17)*8},{x:38*8,y:(H-10)*8},
+      {x:43*8,y:(H-8)*8},{x:49*8,y:(H-11)*8},{x:55*8,y:(H-8)*8},
+      {x:64*8,y:(H-8)*8},{x:71*8,y:(H-6)*8},
+    ],
+    bg: { sky1:'#1a2a1a', sky2:'#0a150a', stars:true, moon:true, trees:true },
+    name: 'Mushroom Forest',
+  };
+}
+
+function createLevel9() {
+  // Volcano - ascending, lots of lava, tight jumps
+  const W = 85, H = 28;
+  const t = Array.from({length: H}, () => Array(W).fill(0));
+  // Lava floor everywhere
+  for (let x = 0; x < W; x++) { t[H-1][x] = TILE.LAVA; t[H-2][x] = TILE.LAVA; }
+  // Starting platform
+  for (let x = 0; x < 6; x++) { t[H-4][x] = TILE.STONE; t[H-3][x] = TILE.STONE; }
+  // Floating stone platforms ascending
+  const plats = [
+    [8,H-5,3],[12,H-7,2],[15,H-5,3],[19,H-8,2],[22,H-6,3],
+    [26,H-9,2],[29,H-7,3],[33,H-10,2],[36,H-8,3],[40,H-11,2],
+    [43,H-9,3],[47,H-12,2],[50,H-10,3],[54,H-13,2],[57,H-11,3],
+    [61,H-14,2],[64,H-12,3],[68,H-10,2],[71,H-8,3],[75,H-6,4],
+  ];
+  for (const [px,py,pw] of plats) {
+    for (let x = px; x < px+pw; x++) { t[py][x] = TILE.STONE; t[py+1][x] = TILE.STONE; }
+  }
+  // Brick obstacles
+  for (let y = H-12; y <= H-3; y++) t[y][38] = TILE.BRICK;
+  for (let y = H-16; y <= H-3; y++) { t[y][58] = TILE.BRICK; t[y][59] = TILE.BRICK; }
+  // Spike hazards on some platforms
+  t[H-7][15] = TILE.SPIKE; t[H-10][36] = TILE.SPIKE;
+  t[H-12][50] = TILE.SPIKE; t[H-8][71] = TILE.SPIKE;
+  // Mushroom blocks
+  t[H-7][3] = TILE.MUSHROOM_BLOCK;
+  t[H-11][29] = TILE.MUSHROOM_BLOCK;
+  t[H-15][54] = TILE.MUSHROOM_BLOCK;
+  t[H-10][68] = TILE.MUSHROOM_BLOCK;
+  t[H-8][76] = TILE.MUSHROOM_BLOCK;
+
+  return {
+    width: W, height: H, tiles: t,
+    spawn: { x:2*8, y:(H-5)*8 },
+    exit: { x:77*8, y:(H-7)*8, w:8, h:16 },
+    enemies: [
+      { type:'bat', x:10*8, y:(H-9)*8, minX:8*8, maxX:14*8 },
+      { type:'bat', x:20*8, y:(H-11)*8, minX:18*8, maxX:24*8 },
+      { type:'slime', x:30*8, y:(H-8)*8, minX:29*8, maxX:31*8 },
+      { type:'bat', x:35*8, y:(H-13)*8, minX:33*8, maxX:39*8 },
+      { type:'bat', x:44*8, y:(H-14)*8, minX:42*8, maxX:48*8 },
+      { type:'slime', x:51*8, y:(H-11)*8, minX:50*8, maxX:52*8 },
+      { type:'bat', x:55*8, y:(H-16)*8, minX:53*8, maxX:60*8 },
+      { type:'bat', x:65*8, y:(H-15)*8, minX:63*8, maxX:67*8 },
+      { type:'bat', x:72*8, y:(H-11)*8, minX:70*8, maxX:76*8 },
+      { type:'slime', x:76*8, y:(H-7)*8, minX:75*8, maxX:78*8 },
+    ],
+    coins: [
+      {x:9*8,y:(H-7)*8},{x:13*8,y:(H-9)*8},{x:20*8,y:(H-10)*8},
+      {x:27*8,y:(H-11)*8},{x:34*8,y:(H-12)*8},{x:41*8,y:(H-13)*8},
+      {x:48*8,y:(H-14)*8},{x:55*8,y:(H-15)*8},{x:62*8,y:(H-16)*8},
+      {x:69*8,y:(H-12)*8},{x:76*8,y:(H-8)*8},
+    ],
+    bg: { sky1:'#2a0a0a', sky2:'#150505', stars:false, crystals:true },
+    name: 'Volcano',
+  };
+}
+
+function createLevel10() {
+  // Final Tower - epic vertical climb, all hazards, many enemies
+  const W = 95, H = 28;
+  const t = Array.from({length: H}, () => Array(W).fill(0));
+  // Ground
+  for (let x = 0; x < W; x++) { t[H-1][x] = TILE.STONE; t[H-2][x] = TILE.STONE; t[H-3][x] = TILE.STONE; }
+  // Massive lava pits
+  for (const [s,e] of [[10,15],[25,32],[45,52],[65,72],[82,88]]) {
+    for (let x = s; x <= e; x++) { t[H-1][x] = TILE.LAVA; t[H-2][x] = TILE.LAVA; t[H-3][x] = 0; }
+  }
+  // Platforms over lava
+  t[H-5][11] = TILE.PLATFORM; t[H-5][13] = TILE.PLATFORM; t[H-7][12] = TILE.PLATFORM;
+  t[H-6][27] = TILE.PLATFORM; t[H-6][29] = TILE.PLATFORM; t[H-6][31] = TILE.PLATFORM;
+  t[H-5][46] = TILE.PLATFORM; t[H-7][49] = TILE.PLATFORM; t[H-5][51] = TILE.PLATFORM;
+  t[H-7][66] = TILE.PLATFORM; t[H-7][68] = TILE.PLATFORM; t[H-7][70] = TILE.PLATFORM;
+  t[H-6][83] = TILE.PLATFORM; t[H-6][85] = TILE.PLATFORM; t[H-6][87] = TILE.PLATFORM;
+  // Tower walls
+  for (const wx of [18,38,58,78]) {
+    for (let y = 3; y < H-3; y++) { t[y][wx] = TILE.BRICK; t[y][wx+1] = TILE.BRICK; }
+    t[H-4][wx] = 0; t[H-5][wx] = 0; t[H-6][wx] = 0;
+    t[H-4][wx+1] = 0; t[H-5][wx+1] = 0; t[H-6][wx+1] = 0;
+  }
+  // Elevated sections between towers
+  for (let x = 5; x < 10; x++) t[H-5][x] = TILE.STONE;
+  for (let x = 20; x < 24; x++) { t[H-6][x] = TILE.STONE; t[H-5][x] = TILE.STONE; }
+  for (let x = 33; x < 37; x++) t[H-5][x] = TILE.STONE;
+  for (let x = 40; x < 44; x++) { t[H-7][x] = TILE.STONE; t[H-6][x] = TILE.STONE; }
+  for (let x = 53; x < 57; x++) t[H-5][x] = TILE.STONE;
+  for (let x = 60; x < 64; x++) { t[H-6][x] = TILE.STONE; }
+  for (let x = 73; x < 77; x++) t[H-5][x] = TILE.STONE;
+  for (let x = 80; x < 82; x++) t[H-4][x] = TILE.STONE;
+  // Upper platforms
+  t[H-9][8] = TILE.PLATFORM; t[H-9][9] = TILE.PLATFORM;
+  t[H-10][22] = TILE.PLATFORM; t[H-10][23] = TILE.PLATFORM;
+  t[H-10][35] = TILE.PLATFORM; t[H-10][36] = TILE.PLATFORM;
+  t[H-11][42] = TILE.PLATFORM; t[H-11][43] = TILE.PLATFORM;
+  t[H-9][55] = TILE.PLATFORM; t[H-9][56] = TILE.PLATFORM;
+  t[H-10][62] = TILE.PLATFORM; t[H-10][63] = TILE.PLATFORM;
+  t[H-9][75] = TILE.PLATFORM; t[H-9][76] = TILE.PLATFORM;
+  // Spikes
+  t[H-4][7] = TILE.SPIKE; t[H-4][8] = TILE.SPIKE;
+  t[H-4][34] = TILE.SPIKE; t[H-4][35] = TILE.SPIKE;
+  t[H-4][54] = TILE.SPIKE; t[H-4][55] = TILE.SPIKE;
+  t[H-4][74] = TILE.SPIKE; t[H-4][75] = TILE.SPIKE;
+  // Exit
+  for (let i = 0; i < 4; i++) { for (let y = H-3-i; y <= H-3; y++) t[y][90+i] = TILE.STONE; }
+  // Mushroom blocks
+  t[H-8][4] = TILE.MUSHROOM_BLOCK; t[H-9][22] = TILE.MUSHROOM_BLOCK;
+  t[H-8][35] = TILE.MUSHROOM_BLOCK; t[H-10][43] = TILE.MUSHROOM_BLOCK;
+  t[H-7][55] = TILE.MUSHROOM_BLOCK; t[H-8][75] = TILE.MUSHROOM_BLOCK;
+
+  return {
+    width: W, height: H, tiles: t,
+    spawn: { x:2*8, y:(H-4)*8 },
+    exit: { x:93*8, y:(H-8)*8, w:8, h:16 },
+    enemies: [
+      { type:'slime', x:6*8, y:(H-6)*8, minX:5*8, maxX:9*8 },
+      { type:'bat', x:12*8, y:(H-9)*8, minX:10*8, maxX:16*8 },
+      { type:'slime', x:22*8, y:(H-7)*8, minX:20*8, maxX:23*8 },
+      { type:'bat', x:28*8, y:(H-10)*8, minX:25*8, maxX:33*8 },
+      { type:'slime', x:35*8, y:(H-6)*8, minX:33*8, maxX:37*8 },
+      { type:'bat', x:42*8, y:(H-12)*8, minX:40*8, maxX:44*8 },
+      { type:'slime', x:48*8, y:(H-4)*8, minX:45*8, maxX:52*8 },
+      { type:'bat', x:55*8, y:(H-11)*8, minX:53*8, maxX:57*8 },
+      { type:'slime', x:62*8, y:(H-7)*8, minX:60*8, maxX:64*8 },
+      { type:'bat', x:68*8, y:(H-10)*8, minX:65*8, maxX:73*8 },
+      { type:'slime', x:75*8, y:(H-6)*8, minX:73*8, maxX:77*8 },
+      { type:'bat', x:84*8, y:(H-9)*8, minX:82*8, maxX:89*8 },
+      { type:'bat', x:88*8, y:(H-7)*8, minX:85*8, maxX:92*8 },
+      { type:'slime', x:91*8, y:(H-4)*8, minX:89*8, maxX:93*8 },
+    ],
+    coins: [
+      {x:8*8,y:(H-11)*8},{x:13*8,y:(H-7)*8},{x:22*8,y:(H-12)*8},
+      {x:29*8,y:(H-8)*8},{x:36*8,y:(H-12)*8},{x:43*8,y:(H-13)*8},
+      {x:49*8,y:(H-9)*8},{x:56*8,y:(H-11)*8},{x:63*8,y:(H-12)*8},
+      {x:69*8,y:(H-9)*8},{x:76*8,y:(H-11)*8},{x:85*8,y:(H-8)*8},
+      {x:92*8,y:(H-6)*8},
+    ],
+    bg: { sky1:'#0a0a1a', sky2:'#050510', stars:true, moon:true, trees:true },
+    name: 'Final Tower',
+  };
+}
+
+const LEVELS = [createLevel1, createLevel2, createLevel3, createLevel4, createLevel5, createLevel6, createLevel7, createLevel8, createLevel9, createLevel10];
 
 // --- GAME STATE ---
 let state = 'menu'; // menu, levelselect, playing, dead, levelcomplete, gamecomplete
@@ -952,11 +1225,11 @@ window.addEventListener('keydown', e => {
       selectedLevel = selectedLevel < maxSel ? selectedLevel + 1 : 0;
     }
     if (e.code === 'ArrowUp' || e.code === 'KeyW') {
-      const up = selectedLevel - 3;
+      const up = selectedLevel - 5;
       if (up >= 0 && up <= maxSel) selectedLevel = up;
     }
     if (e.code === 'ArrowDown' || e.code === 'KeyS') {
-      const down = selectedLevel + 3;
+      const down = selectedLevel + 5;
       if (down <= maxSel) selectedLevel = down;
     }
     if (e.code === 'Space' || e.code === 'Enter') startLevel(selectedLevel);
@@ -2040,48 +2313,51 @@ function drawLevelSelect() {
   ctx.font = 'bold 28px monospace';
   ctx.fillText('SELECT LEVEL', COLS * PX / 2 - 110, 18 * PX);
 
-  const levelNames = ['Dark Forest', 'Lava Caves', 'Sky Islands', 'Crystal Caverns', 'Poison Swamp', 'Dark Castle'];
-  const levelColors = ['#44aa44', '#ff6633', '#4488ff', '#aa44cc', '#33aa55', '#884422'];
+  const levelNames = ['Dark Forest', 'Lava Caves', 'Sky Islands', 'Crystal Caverns', 'Poison Swamp',
+    'Dark Castle', 'Frozen Peaks', 'Mushroom Forest', 'Volcano', 'Final Tower'];
+  const levelColors = ['#44aa44', '#ff6633', '#4488ff', '#aa44cc', '#33aa55',
+    '#884422', '#5577bb', '#228844', '#cc3300', '#222244'];
   const maxSel = Math.min(maxLevelReached, LEVELS.length - 1);
-  const cols = 3;
+  const cols = 5;
 
   for (let i = 0; i < LEVELS.length; i++) {
     const col = i % cols;
     const row = Math.floor(i / cols);
-    const bx = COLS * PX / 2 - 115 + col * 82;
-    const by = 28 * PX + row * 42 * PX;
+    const bx = COLS * PX / 2 - 145 + col * 60;
+    const by = 30 * PX + row * 38 * PX;
     const unlocked = i <= maxSel;
 
     // Box
     if (i === selectedLevel) {
       ctx.strokeStyle = '#ffdd44'; ctx.lineWidth = 3;
-      ctx.strokeRect(bx - 4, by - 4, 68, 34 * PX);
+      ctx.strokeRect(bx - 3, by - 3, 52, 28 * PX);
     }
     ctx.fillStyle = unlocked ? levelColors[i] : '#333344';
-    ctx.fillRect(bx, by, 60, 30 * PX);
+    ctx.fillRect(bx, by, 46, 24 * PX);
 
     // Level number
     ctx.fillStyle = unlocked ? '#ffffff' : '#666666';
-    ctx.font = 'bold 20px monospace';
-    ctx.fillText(`${i + 1}`, bx + 24, by + 16 * PX);
+    ctx.font = 'bold 16px monospace';
+    ctx.fillText(`${i + 1}`, bx + (i >= 9 ? 12 : 17), by + 14 * PX);
 
     // Level name
     ctx.fillStyle = unlocked ? '#cccccc' : '#555555';
-    ctx.font = '8px monospace';
-    ctx.fillText(levelNames[i] || `Level ${i+1}`, bx - 2, by + 34 * PX);
+    ctx.font = '7px monospace';
+    const name = levelNames[i] || `Level ${i+1}`;
+    ctx.fillText(name.length > 8 ? name.slice(0,8) : name, bx - 2, by + 28 * PX);
 
     // Lock for locked levels
     if (!unlocked) {
       ctx.fillStyle = '#888888';
-      ctx.font = '16px monospace';
-      ctx.fillText('X', bx + 24, by + 18 * PX);
+      ctx.font = '14px monospace';
+      ctx.fillText('X', bx + 17, by + 16 * PX);
     }
   }
 
   ctx.fillStyle = '#6666aa';
-  ctx.font = '12px monospace';
-  ctx.fillText('Arrow keys to select, SPACE to play', COLS * PX / 2 - 130, 112 * PX);
-  ctx.fillText('ESC to go back', COLS * PX / 2 - 55, 117 * PX);
+  ctx.font = '11px monospace';
+  ctx.fillText('Arrow keys to select, SPACE to play', COLS * PX / 2 - 125, 112 * PX);
+  ctx.fillText('ESC to go back', COLS * PX / 2 - 50, 117 * PX);
 }
 
 function drawDeathScreen() {
