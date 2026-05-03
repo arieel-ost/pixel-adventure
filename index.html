@@ -20,10 +20,60 @@ canvas {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
+#touch-controls {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  pointer-events: none;
+  z-index: 10;
+  height: 160px;
+}
+#touch-controls .btn {
+  pointer-events: auto;
+  position: absolute;
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  font: bold 20px monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+#touch-controls .btn:active, #touch-controls .btn.pressed {
+  background: rgba(255,255,255,0.4);
+  border-color: #ffdd44;
+}
+#touch-controls .btn.small {
+  width: 46px; height: 46px;
+  font-size: 14px;
+}
+/* D-pad left side */
+#btn-left { bottom: 20px; left: 16px; }
+#btn-right { bottom: 20px; left: 88px; }
+#btn-crouch { bottom: 85px; left: 52px; }
+/* Action buttons right side */
+#btn-jump { bottom: 20px; right: 16px; }
+#btn-jump2 { bottom: 85px; right: 16px; width: 46px; height: 46px; font-size: 12px; }
+#btn-power { bottom: 20px; right: 88px; }
+#btn-pause { top: 10px; right: 10px; width: 40px; height: 40px; font-size: 18px; }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
+<div id="touch-controls">
+  <div class="btn" id="btn-left">◀</div>
+  <div class="btn" id="btn-right">▶</div>
+  <div class="btn small" id="btn-crouch">▼</div>
+  <div class="btn" id="btn-jump">A</div>
+  <div class="btn small" id="btn-jump2">2x</div>
+  <div class="btn" id="btn-power">B</div>
+  <div class="btn small" id="btn-pause">II</div>
+</div>
 <script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -218,10 +268,10 @@ function makeSuperJumpSprite() {
 }
 
 // Item types
-const ITEM_TYPES = ['fire', 'speed', 'shield', 'superjump'];
+const ITEM_TYPES = ['fire', 'star', 'shield', 'superjump'];
 const ITEM_SPRITES = {
   fire: makeFireFlowerSprite,
-  speed: makeSpeedStarSprite,
+  star: makeSpeedStarSprite,
   shield: makeShieldSprite,
   superjump: makeSuperJumpSprite,
 };
@@ -608,12 +658,246 @@ function createLevel3() {
   };
 }
 
-const LEVELS = [createLevel1, createLevel2, createLevel3];
+function createLevel4() {
+  // Crystal Caverns - underground with tight passages and many enemies
+  const W = 75, H = 22;
+  const t = Array.from({length: H}, () => Array(W).fill(0));
+  // Floor and ceiling
+  for (let x = 0; x < W; x++) {
+    t[H-1][x] = TILE.STONE; t[H-2][x] = TILE.STONE;
+    t[0][x] = TILE.STONE; t[1][x] = TILE.STONE;
+  }
+  // Ground layer with gaps
+  for (let x = 0; x < W; x++) {
+    if ((x >= 8 && x <= 11) || (x >= 22 && x <= 25) || (x >= 38 && x <= 42) || (x >= 55 && x <= 59)) continue;
+    t[H-3][x] = TILE.STONE;
+  }
+  // Water pits
+  for (let x = 8; x <= 11; x++) { t[H-1][x] = TILE.WATER; t[H-2][x] = TILE.WATER; t[H-3][x] = 0; }
+  for (let x = 38; x <= 42; x++) { t[H-1][x] = TILE.WATER; t[H-2][x] = TILE.WATER; t[H-3][x] = 0; }
+  // Lava pits
+  for (let x = 22; x <= 25; x++) { t[H-1][x] = TILE.LAVA; t[H-2][x] = TILE.LAVA; t[H-3][x] = 0; }
+  for (let x = 55; x <= 59; x++) { t[H-1][x] = TILE.LAVA; t[H-2][x] = TILE.LAVA; t[H-3][x] = 0; }
+  // Platforms over hazards
+  t[H-5][9] = TILE.PLATFORM; t[H-5][10] = TILE.PLATFORM;
+  t[H-6][23] = TILE.PLATFORM; t[H-6][24] = TILE.PLATFORM;
+  t[H-5][39] = TILE.PLATFORM; t[H-5][40] = TILE.PLATFORM; t[H-5][41] = TILE.PLATFORM;
+  t[H-7][56] = TILE.PLATFORM; t[H-7][57] = TILE.PLATFORM; t[H-7][58] = TILE.PLATFORM;
+  // Elevated sections
+  for (let x = 14; x < 20; x++) { t[H-5][x] = TILE.STONE; t[H-6][x] = TILE.STONE; }
+  for (let x = 30; x < 36; x++) { t[H-4][x] = TILE.STONE; }
+  // Vertical pillars with gaps
+  for (let y = 3; y < H-3; y++) { t[y][27] = TILE.BRICK; t[y][44] = TILE.BRICK; t[y][62] = TILE.BRICK; }
+  t[H-4][27] = 0; t[H-5][27] = 0; t[H-6][27] = 0;
+  t[H-4][44] = 0; t[H-5][44] = 0;
+  t[H-4][62] = 0; t[H-5][62] = 0; t[H-6][62] = 0;
+  // Upper platforms
+  t[H-9][15] = TILE.PLATFORM; t[H-9][16] = TILE.PLATFORM;
+  t[H-10][28] = TILE.PLATFORM; t[H-10][29] = TILE.PLATFORM;
+  t[H-11][33] = TILE.PLATFORM; t[H-11][34] = TILE.PLATFORM;
+  t[H-8][46] = TILE.PLATFORM; t[H-8][47] = TILE.PLATFORM;
+  t[H-10][50] = TILE.PLATFORM; t[H-10][51] = TILE.PLATFORM;
+  // Staircase to exit
+  for (let i = 0; i < 5; i++) { for (let y = H-3-i; y <= H-3; y++) t[y][68+i] = TILE.STONE; }
+  // Mushroom blocks
+  t[H-7][4] = TILE.MUSHROOM_BLOCK;
+  t[H-9][18] = TILE.MUSHROOM_BLOCK;
+  t[H-6][34] = TILE.MUSHROOM_BLOCK;
+  t[H-8][50] = TILE.MUSHROOM_BLOCK;
+  t[H-5][65] = TILE.MUSHROOM_BLOCK;
+
+  return {
+    width: W, height: H, tiles: t,
+    spawn: { x:2*8, y:(H-4)*8 },
+    exit: { x:72*8, y:(H-9)*8, w:8, h:16 },
+    enemies: [
+      { type:'slime', x:5*8, y:(H-4)*8, minX:2*8, maxX:7*8 },
+      { type:'bat', x:10*8, y:(H-8)*8, minX:8*8, maxX:13*8 },
+      { type:'slime', x:16*8, y:(H-7)*8, minX:14*8, maxX:19*8 },
+      { type:'bat', x:24*8, y:(H-9)*8, minX:22*8, maxX:26*8 },
+      { type:'slime', x:32*8, y:(H-5)*8, minX:30*8, maxX:35*8 },
+      { type:'bat', x:40*8, y:(H-8)*8, minX:38*8, maxX:43*8 },
+      { type:'slime', x:48*8, y:(H-4)*8, minX:45*8, maxX:53*8 },
+      { type:'bat', x:52*8, y:(H-12)*8, minX:49*8, maxX:56*8 },
+      { type:'slime', x:64*8, y:(H-4)*8, minX:60*8, maxX:67*8 },
+    ],
+    coins: [
+      {x:9*8,y:(H-7)*8},{x:16*8,y:(H-11)*8},{x:24*8,y:(H-8)*8},
+      {x:29*8,y:(H-12)*8},{x:33*8,y:(H-13)*8},{x:40*8,y:(H-7)*8},
+      {x:47*8,y:(H-10)*8},{x:51*8,y:(H-12)*8},{x:57*8,y:(H-9)*8},
+      {x:66*8,y:(H-7)*8},{x:70*8,y:(H-6)*8},
+    ],
+    bg: { sky1:'#1a1a2a', sky2:'#0a0515', stars:false, crystals:true },
+    name: 'Crystal Caverns',
+  };
+}
+
+function createLevel5() {
+  // Poison Swamp - ground-level with lots of water, vine platforms
+  const W = 85, H = 22;
+  const t = Array.from({length: H}, () => Array(W).fill(0));
+  // Swamp floor - mix of ground and water
+  for (let x = 0; x < W; x++) {
+    t[H-1][x] = TILE.GROUND; t[H-2][x] = TILE.GROUND;
+  }
+  // Water sections throughout
+  for (const [s,e] of [[6,10],[18,22],[30,35],[45,49],[58,63],[72,76]]) {
+    for (let x = s; x <= e; x++) { t[H-1][x] = TILE.WATER; t[H-2][x] = TILE.WATER; t[H-3][x] = 0; }
+  }
+  // Grass on solid ground
+  for (let x = 0; x < W; x++) {
+    if (t[H-2][x] !== TILE.WATER && t[H-3][x] !== TILE.WATER) t[H-3][x] = TILE.GRASS;
+  }
+  // Stepping stones over water
+  t[H-4][7] = TILE.PLATFORM; t[H-4][9] = TILE.PLATFORM;
+  t[H-5][19] = TILE.PLATFORM; t[H-5][21] = TILE.PLATFORM;
+  t[H-4][31] = TILE.PLATFORM; t[H-4][33] = TILE.PLATFORM; t[H-6][32] = TILE.PLATFORM;
+  t[H-5][46] = TILE.PLATFORM; t[H-5][48] = TILE.PLATFORM;
+  t[H-4][59] = TILE.PLATFORM; t[H-6][61] = TILE.PLATFORM; t[H-4][63] = TILE.PLATFORM;
+  t[H-5][73] = TILE.PLATFORM; t[H-5][75] = TILE.PLATFORM;
+  // Elevated terrain
+  for (let x = 12; x < 17; x++) { t[H-4][x] = TILE.GRASS; t[H-3][x] = TILE.GROUND; }
+  for (let x = 24; x < 29; x++) { t[H-5][x] = TILE.GRASS; t[H-4][x] = TILE.GROUND; t[H-3][x] = TILE.GROUND; }
+  for (let x = 37; x < 44; x++) { t[H-4][x] = TILE.GRASS; t[H-3][x] = TILE.GROUND; }
+  for (let x = 51; x < 56; x++) { t[H-5][x] = TILE.GRASS; t[H-4][x] = TILE.GROUND; t[H-3][x] = TILE.GROUND; }
+  for (let x = 65; x < 71; x++) { t[H-4][x] = TILE.GRASS; t[H-3][x] = TILE.GROUND; }
+  // High platforms
+  t[H-8][14] = TILE.PLATFORM; t[H-8][15] = TILE.PLATFORM;
+  t[H-9][26] = TILE.PLATFORM; t[H-9][27] = TILE.PLATFORM;
+  t[H-7][40] = TILE.PLATFORM; t[H-7][41] = TILE.PLATFORM; t[H-7][42] = TILE.PLATFORM;
+  t[H-9][53] = TILE.PLATFORM; t[H-9][54] = TILE.PLATFORM;
+  t[H-8][67] = TILE.PLATFORM; t[H-8][68] = TILE.PLATFORM;
+  // Exit area
+  for (let x = 78; x < W; x++) { t[H-3][x] = TILE.GRASS; t[H-2][x] = TILE.GROUND; t[H-1][x] = TILE.GROUND; }
+  for (let i = 0; i < 3; i++) { for (let y = H-3-i; y <= H-3; y++) t[y][78+i] = TILE.GROUND; }
+  // Mushroom blocks
+  t[H-7][3] = TILE.MUSHROOM_BLOCK;
+  t[H-8][25] = TILE.MUSHROOM_BLOCK;
+  t[H-7][41] = TILE.MUSHROOM_BLOCK;
+  t[H-8][54] = TILE.MUSHROOM_BLOCK;
+  t[H-6][68] = TILE.MUSHROOM_BLOCK;
+
+  return {
+    width: W, height: H, tiles: t,
+    spawn: { x:2*8, y:(H-4)*8 },
+    exit: { x:82*8, y:(H-7)*8, w:8, h:16 },
+    enemies: [
+      { type:'slime', x:4*8, y:(H-4)*8, minX:2*8, maxX:5*8 },
+      { type:'bat', x:8*8, y:(H-7)*8, minX:6*8, maxX:11*8 },
+      { type:'slime', x:14*8, y:(H-5)*8, minX:12*8, maxX:16*8 },
+      { type:'bat', x:20*8, y:(H-8)*8, minX:18*8, maxX:23*8 },
+      { type:'slime', x:26*8, y:(H-6)*8, minX:24*8, maxX:28*8 },
+      { type:'bat', x:33*8, y:(H-9)*8, minX:30*8, maxX:36*8 },
+      { type:'slime', x:40*8, y:(H-5)*8, minX:37*8, maxX:43*8 },
+      { type:'bat', x:47*8, y:(H-8)*8, minX:45*8, maxX:50*8 },
+      { type:'slime', x:53*8, y:(H-6)*8, minX:51*8, maxX:55*8 },
+      { type:'bat', x:61*8, y:(H-9)*8, minX:58*8, maxX:64*8 },
+      { type:'slime', x:68*8, y:(H-5)*8, minX:65*8, maxX:70*8 },
+      { type:'bat', x:74*8, y:(H-8)*8, minX:72*8, maxX:77*8 },
+    ],
+    coins: [
+      {x:8*8,y:(H-6)*8},{x:14*8,y:(H-10)*8},{x:20*8,y:(H-7)*8},
+      {x:27*8,y:(H-11)*8},{x:33*8,y:(H-8)*8},{x:41*8,y:(H-9)*8},
+      {x:47*8,y:(H-7)*8},{x:54*8,y:(H-11)*8},{x:61*8,y:(H-8)*8},
+      {x:68*8,y:(H-10)*8},{x:74*8,y:(H-7)*8},{x:80*8,y:(H-5)*8},
+    ],
+    bg: { sky1:'#1a2a1a', sky2:'#0a150a', stars:true, moon:true, trees:true },
+    name: 'Poison Swamp',
+  };
+}
+
+function createLevel6() {
+  // Dark Castle - vertical level with towers and spikes
+  const W = 90, H = 26;
+  const t = Array.from({length: H}, () => Array(W).fill(0));
+  // Ground
+  for (let x = 0; x < W; x++) {
+    t[H-1][x] = TILE.STONE; t[H-2][x] = TILE.STONE; t[H-3][x] = TILE.STONE;
+  }
+  // Lava pits
+  for (const [s,e] of [[10,14],[28,33],[48,53],[65,70]]) {
+    for (let x = s; x <= e; x++) { t[H-1][x] = TILE.LAVA; t[H-2][x] = TILE.LAVA; t[H-3][x] = 0; }
+  }
+  // Castle walls (brick towers)
+  for (const wx of [20,40,60,78]) {
+    for (let y = 4; y < H-3; y++) { t[y][wx] = TILE.BRICK; t[y][wx+1] = TILE.BRICK; }
+    t[H-4][wx] = 0; t[H-5][wx] = 0; t[H-6][wx] = 0;
+    t[H-4][wx+1] = 0; t[H-5][wx+1] = 0; t[H-6][wx+1] = 0;
+  }
+  // Platforms over lava
+  t[H-5][11] = TILE.PLATFORM; t[H-5][13] = TILE.PLATFORM;
+  t[H-6][29] = TILE.PLATFORM; t[H-6][31] = TILE.PLATFORM; t[H-6][33] = TILE.PLATFORM;
+  t[H-5][49] = TILE.PLATFORM; t[H-5][51] = TILE.PLATFORM;
+  t[H-7][66] = TILE.PLATFORM; t[H-7][68] = TILE.PLATFORM; t[H-7][70] = TILE.PLATFORM;
+  // Multi-level platforms (castle floors)
+  for (let x = 3; x < 9; x++) t[H-6][x] = TILE.STONE;
+  for (let x = 15; x < 19; x++) t[H-7][x] = TILE.STONE;
+  for (let x = 22; x < 27; x++) t[H-8][x] = TILE.STONE;
+  for (let x = 34; x < 39; x++) t[H-7][x] = TILE.STONE;
+  for (let x = 42; x < 47; x++) t[H-9][x] = TILE.STONE;
+  for (let x = 55; x < 59; x++) t[H-6][x] = TILE.STONE;
+  for (let x = 62; x < 65; x++) t[H-8][x] = TILE.STONE;
+  for (let x = 72; x < 77; x++) t[H-6][x] = TILE.STONE;
+  // High platforms
+  t[H-10][6] = TILE.PLATFORM; t[H-10][7] = TILE.PLATFORM;
+  t[H-12][16] = TILE.PLATFORM; t[H-12][17] = TILE.PLATFORM;
+  t[H-11][24] = TILE.PLATFORM; t[H-11][25] = TILE.PLATFORM;
+  t[H-10][36] = TILE.PLATFORM; t[H-10][37] = TILE.PLATFORM;
+  t[H-12][44] = TILE.PLATFORM; t[H-12][45] = TILE.PLATFORM;
+  t[H-10][56] = TILE.PLATFORM; t[H-10][57] = TILE.PLATFORM;
+  t[H-11][74] = TILE.PLATFORM; t[H-11][75] = TILE.PLATFORM;
+  // Spikes
+  t[H-4][16] = TILE.SPIKE; t[H-4][17] = TILE.SPIKE;
+  t[H-4][35] = TILE.SPIKE; t[H-4][36] = TILE.SPIKE;
+  t[H-4][55] = TILE.SPIKE; t[H-4][56] = TILE.SPIKE;
+  // Staircase to exit
+  for (let i = 0; i < 5; i++) { for (let y = H-3-i; y <= H-3; y++) t[y][83+i] = TILE.STONE; }
+  // Mushroom blocks
+  t[H-9][5] = TILE.MUSHROOM_BLOCK;
+  t[H-10][25] = TILE.MUSHROOM_BLOCK;
+  t[H-10][37] = TILE.MUSHROOM_BLOCK;
+  t[H-8][57] = TILE.MUSHROOM_BLOCK;
+  t[H-8][74] = TILE.MUSHROOM_BLOCK;
+
+  return {
+    width: W, height: H, tiles: t,
+    spawn: { x:2*8, y:(H-4)*8 },
+    exit: { x:87*8, y:(H-9)*8, w:8, h:16 },
+    enemies: [
+      { type:'slime', x:5*8, y:(H-4)*8, minX:2*8, maxX:9*8 },
+      { type:'bat', x:12*8, y:(H-8)*8, minX:10*8, maxX:14*8 },
+      { type:'slime', x:17*8, y:(H-8)*8, minX:15*8, maxX:18*8 },
+      { type:'bat', x:25*8, y:(H-11)*8, minX:22*8, maxX:27*8 },
+      { type:'slime', x:30*8, y:(H-4)*8, minX:28*8, maxX:33*8 },
+      { type:'bat', x:36*8, y:(H-10)*8, minX:34*8, maxX:39*8 },
+      { type:'slime', x:44*8, y:(H-10)*8, minX:42*8, maxX:46*8 },
+      { type:'bat', x:50*8, y:(H-8)*8, minX:48*8, maxX:54*8 },
+      { type:'slime', x:57*8, y:(H-7)*8, minX:55*8, maxX:58*8 },
+      { type:'bat', x:63*8, y:(H-11)*8, minX:62*8, maxX:65*8 },
+      { type:'bat', x:68*8, y:(H-10)*8, minX:65*8, maxX:71*8 },
+      { type:'slime', x:74*8, y:(H-7)*8, minX:72*8, maxX:76*8 },
+      { type:'bat', x:82*8, y:(H-8)*8, minX:78*8, maxX:86*8 },
+    ],
+    coins: [
+      {x:7*8,y:(H-12)*8},{x:12*8,y:(H-7)*8},{x:17*8,y:(H-14)*8},
+      {x:25*8,y:(H-13)*8},{x:31*8,y:(H-8)*8},{x:37*8,y:(H-12)*8},
+      {x:44*8,y:(H-14)*8},{x:51*8,y:(H-7)*8},{x:57*8,y:(H-12)*8},
+      {x:64*8,y:(H-13)*8},{x:69*8,y:(H-9)*8},{x:75*8,y:(H-13)*8},
+      {x:84*8,y:(H-6)*8},
+    ],
+    bg: { sky1:'#120a1a', sky2:'#060310', stars:true, moon:true, trees:true },
+    name: 'Dark Castle',
+  };
+}
+
+const LEVELS = [createLevel1, createLevel2, createLevel3, createLevel4, createLevel5, createLevel6];
 
 // --- GAME STATE ---
-let state = 'menu';
+let state = 'menu'; // menu, levelselect, playing, dead, levelcomplete, gamecomplete
 let selectedChar = 0;
 let currentLevel = 0;
+let maxLevelReached = 0; // highest level unlocked (0-indexed)
+let selectedLevel = 0; // for level select screen
 let level = null;
 let score = 0;
 let lives = 3;
@@ -625,7 +909,7 @@ let player = {
   x:0, y:0, vx:0, vy:0, w:10, h:12,
   onGround:false, facing:1,
   animFrame:0, animTimer:0, invincible:0,
-  power:null, // 'fire','speed','shield','superjump' or null
+  power:null, // 'fire','star','shield','superjump' or null
   powerTimer:0,
   shieldHit:false,
   canDoubleJump:true,
@@ -657,11 +941,31 @@ window.addEventListener('keydown', e => {
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') selectedChar = (selectedChar + 2) % 3;
     if (e.code === 'ArrowRight' || e.code === 'KeyD') selectedChar = (selectedChar + 1) % 3;
     if (e.code === 'Space' || e.code === 'Enter') startGame();
+    if (e.code === 'KeyL' && maxLevelReached > 0) { selectedLevel = 0; state = 'levelselect'; }
+  }
+  if (state === 'levelselect') {
+    const maxSel = Math.min(maxLevelReached, LEVELS.length - 1);
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+      selectedLevel = selectedLevel > 0 ? selectedLevel - 1 : maxSel;
+    }
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+      selectedLevel = selectedLevel < maxSel ? selectedLevel + 1 : 0;
+    }
+    if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+      const up = selectedLevel - 3;
+      if (up >= 0 && up <= maxSel) selectedLevel = up;
+    }
+    if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+      const down = selectedLevel + 3;
+      if (down <= maxSel) selectedLevel = down;
+    }
+    if (e.code === 'Space' || e.code === 'Enter') startLevel(selectedLevel);
+    if (e.code === 'Escape') state = 'menu';
   }
   if (state === 'dead' && deathTimer <= 0) {
     if (e.code === 'Space' || e.code === 'Enter') {
       if (lives > 0) respawn();
-      else { lives = 3; respawn(); }
+      else { lives = 3; fullReset(); }
     }
   }
   if (state === 'levelcomplete' && levelCompleteTimer <= 0) {
@@ -669,7 +973,7 @@ window.addEventListener('keydown', e => {
   }
   if (state === 'gamecomplete') {
     if (e.code === 'Space' || e.code === 'Enter') {
-      state = 'menu'; lives = 3; score = 0; currentLevel = 0;
+      state = 'menu'; lives = 3; score = 0;
     }
   }
   // Jump / Double jump with Space
@@ -677,13 +981,22 @@ window.addEventListener('keydown', e => {
     if (player.onGround) {
       // normal jump handled in update
     } else if (!player.hasDoubleJumped && player.canDoubleJump) {
-      player.vy = -2.0; // double jump (slightly weaker)
+      player.vy = -2.3; // double jump - full force (jumps twice as high from air)
       player.hasDoubleJumped = true;
     }
   }
   // Use power with F/E key
   if (state === 'playing' && player.power === 'fire' && (e.code === 'KeyF' || e.code === 'KeyE')) {
     shootFireball();
+  }
+  // Escape to open level select / menu during gameplay
+  if (state === 'playing' && e.code === 'Escape') {
+    if (maxLevelReached > 0) {
+      selectedLevel = currentLevel;
+      state = 'levelselect';
+    } else {
+      state = 'menu';
+    }
   }
   // Lama mode toggle (secret)
   if (e.key === 'ü' || e.key === 'Ü') {
@@ -694,17 +1007,185 @@ window.addEventListener('keyup', e => { keys[e.code] = false; });
 
 // Mouse click to use power
 canvas.addEventListener('mousedown', e => {
-  if (e.button === 0 && state === 'playing' && player.power) {
-    usePower();
+  if (e.button === 0 && state === 'playing') {
+    if (player.lamaMode) {
+      // Teleport to click position
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const clickX = (e.clientX - rect.left) * scaleX / PX + camX;
+      const clickY = (e.clientY - rect.top) * scaleY / PX + camY;
+      player.x = clickX;
+      player.y = clickY;
+      player.vy = 0;
+      player.vx = 0;
+    } else if (player.power) {
+      usePower();
+    }
   }
 });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
+// --- MOBILE TOUCH CONTROLS ---
+const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+if (isMobile) {
+  document.getElementById('touch-controls').style.display = 'block';
+  // Scale canvas to fit screen width, leave room for buttons
+  const style = document.createElement('style');
+  style.textContent = `
+    body { align-items: flex-start; padding-top: 10px; }
+    canvas { border-width: 2px; max-width: 98vw; max-height: calc(100vh - 175px); }
+  `;
+  document.head.appendChild(style);
+}
+
+// Touch button helper - simulates key press/release
+function touchBtn(id, keyCode, opts) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const onDown = (e) => {
+    e.preventDefault();
+    el.classList.add('pressed');
+    keys[keyCode] = true;
+    if (opts && opts.onDown) opts.onDown();
+  };
+  const onUp = (e) => {
+    e.preventDefault();
+    el.classList.remove('pressed');
+    keys[keyCode] = false;
+    if (opts && opts.onUp) opts.onUp();
+  };
+  el.addEventListener('touchstart', onDown, { passive: false });
+  el.addEventListener('touchend', onUp, { passive: false });
+  el.addEventListener('touchcancel', onUp, { passive: false });
+}
+
+// D-pad
+touchBtn('btn-left', 'ArrowLeft', { onDown: () => {
+  if (state === 'menu') selectedChar = (selectedChar + 2) % 3;
+  if (state === 'levelselect') {
+    const maxSel = Math.min(maxLevelReached, LEVELS.length - 1);
+    selectedLevel = selectedLevel > 0 ? selectedLevel - 1 : maxSel;
+  }
+}});
+touchBtn('btn-right', 'ArrowRight', { onDown: () => {
+  if (state === 'menu') selectedChar = (selectedChar + 1) % 3;
+  if (state === 'levelselect') {
+    const maxSel = Math.min(maxLevelReached, LEVELS.length - 1);
+    selectedLevel = selectedLevel < maxSel ? selectedLevel + 1 : 0;
+  }
+}});
+touchBtn('btn-crouch', 'ShiftLeft');
+
+// Jump button - triggers jump keydown event for double jump detection
+(function() {
+  const el = document.getElementById('btn-jump');
+  if (!el) return;
+  el.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    el.classList.add('pressed');
+    keys['Space'] = true;
+    // Trigger double jump logic
+    if (state === 'playing') {
+      if (player.onGround) {
+        // normal jump handled in update
+      } else if (!player.hasDoubleJumped && player.canDoubleJump) {
+        player.vy = -2.3;
+        player.hasDoubleJumped = true;
+      }
+    }
+    // Menu/death/levelcomplete: simulate Space press
+    if (state === 'menu') startGame();
+    if (state === 'dead' && deathTimer <= 0) {
+      if (lives > 0) respawn();
+      else { lives = 3; fullReset(); }
+    }
+    if (state === 'levelcomplete' && levelCompleteTimer <= 0) nextLevel();
+    if (state === 'levelselect') startLevel(selectedLevel);
+    if (state === 'gamecomplete') { state = 'menu'; lives = 3; score = 0; }
+  }, { passive: false });
+  el.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    el.classList.remove('pressed');
+    keys['Space'] = false;
+  }, { passive: false });
+  el.addEventListener('touchcancel', (e) => {
+    el.classList.remove('pressed');
+    keys['Space'] = false;
+  }, { passive: false });
+})();
+
+// Double jump button (dedicated)
+(function() {
+  const el = document.getElementById('btn-jump2');
+  if (!el) return;
+  el.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    el.classList.add('pressed');
+    if (state === 'playing' && !player.onGround && !player.hasDoubleJumped && player.canDoubleJump) {
+      player.vy = -2.3;
+      player.hasDoubleJumped = true;
+    }
+  }, { passive: false });
+  el.addEventListener('touchend', (e) => { e.preventDefault(); el.classList.remove('pressed'); }, { passive: false });
+  el.addEventListener('touchcancel', () => { el.classList.remove('pressed'); }, { passive: false });
+})();
+
+// Power button
+(function() {
+  const el = document.getElementById('btn-power');
+  if (!el) return;
+  el.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    el.classList.add('pressed');
+    if (state === 'playing' && player.power) usePower();
+  }, { passive: false });
+  el.addEventListener('touchend', (e) => { e.preventDefault(); el.classList.remove('pressed'); }, { passive: false });
+  el.addEventListener('touchcancel', () => { el.classList.remove('pressed'); }, { passive: false });
+})();
+
+// Pause button
+(function() {
+  const el = document.getElementById('btn-pause');
+  if (!el) return;
+  el.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    el.classList.add('pressed');
+    if (state === 'playing') {
+      if (maxLevelReached > 0) { selectedLevel = currentLevel; state = 'levelselect'; }
+      else state = 'menu';
+    } else if (state === 'levelselect') {
+      state = 'menu';
+    }
+  }, { passive: false });
+  el.addEventListener('touchend', (e) => { e.preventDefault(); el.classList.remove('pressed'); }, { passive: false });
+  el.addEventListener('touchcancel', () => { el.classList.remove('pressed'); }, { passive: false });
+})();
+
+// Prevent default touch on canvas (no scroll/zoom while playing)
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  // Check if tapping the LEVELS button in menu
+  if (state === 'menu' && maxLevelReached > 0) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const tx = (e.touches[0].clientX - rect.left) * scaleX;
+    const ty = (e.touches[0].clientY - rect.top) * scaleY;
+    const btnX = COLS*PX/2 - 75, btnY = 112*PX, btnW = 150, btnH = 20;
+    if (tx >= btnX && tx <= btnX + btnW && ty >= btnY && ty <= btnY + btnH) {
+      selectedLevel = 0;
+      state = 'levelselect';
+    }
+  }
+}, { passive: false });
+canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
 function usePower() {
   if (player.power === 'fire') {
     shootFireball();
-  } else if (player.power === 'speed') {
-    // Speed burst - instant boost
+  } else if (player.power === 'star') {
+    // Star burst - speed dash
     player.vx = player.facing * 3.0;
   } else if (player.power === 'shield') {
     // Shield slam - push away/kill nearby enemies
@@ -744,6 +1225,14 @@ function startGame() {
   state = 'playing';
 }
 
+function startLevel(idx) {
+  currentLevel = idx;
+  lives = 3;
+  score = 0;
+  loadLevel(currentLevel);
+  state = 'playing';
+}
+
 function loadLevel(idx) {
   level = LEVELS[idx]();
   player.x = level.spawn.x;
@@ -771,12 +1260,13 @@ function loadLevel(idx) {
 }
 
 function respawn() {
-  // Stay in same level, just reset position
+  // Reset player position
   player.x = level.spawn.x;
   player.y = level.spawn.y;
   player.vx = 0; player.vy = 0;
   player.onGround = false;
   player.invincible = 90;
+  // Lose power-up on death
   player.power = null;
   player.powerTimer = 0;
   player.shieldHit = false;
@@ -785,11 +1275,26 @@ function respawn() {
   player.crouching = false;
   player.h = player.normalH;
   fireballs = [];
+  // Keep enemies, coins, item blocks as they are (progress preserved)
   state = 'playing';
+}
+
+function fullReset() {
+  // Game over: reload entire level (enemies, item blocks, coins all reset)
+  level = LEVELS[currentLevel]();
+  enemies = level.enemies.map(e => ({
+    ...e, alive:true, vx: 0.3, animFrame:0, animTimer:0, startY:e.y,
+  }));
+  coins = level.coins.map(c => ({ ...c, collected:false, animTimer:0 }));
+  items = [];
+  level.itemBlocksHit = {};
+  level.itemBlockCounter = 0;
+  respawn();
 }
 
 function nextLevel() {
   currentLevel++;
+  if (currentLevel > maxLevelReached) maxLevelReached = currentLevel;
   if (currentLevel >= LEVELS.length) {
     state = 'gamecomplete';
   } else {
@@ -807,6 +1312,7 @@ function getTile(tx, ty) {
 
 function isSolid(tx, ty) {
   const tile = getTile(tx, ty);
+  if (player.lamaMode && (tile === TILE.LAVA || tile === TILE.WATER)) return true;
   return tile === TILE.GROUND || tile === TILE.GRASS || tile === TILE.STONE ||
          tile === TILE.BRICK || tile === TILE.PLATFORM || tile === TILE.MUSHROOM_BLOCK;
 }
@@ -828,6 +1334,7 @@ function checkTileCollision(x, y, w, h) {
 }
 
 function checkDanger(x, y, w, h) {
+  if (player.lamaMode) return false; // lama mode ignores all danger
   const left = Math.floor(x / 8);
   const right = Math.floor((x + w - 1) / 8);
   const top = Math.floor(y / 8);
@@ -898,7 +1405,7 @@ function update() {
   if (keys['ArrowLeft'] || keys['KeyA']) moveX = -1;
   if (keys['ArrowRight'] || keys['KeyD']) moveX = 1;
   const crouchSlow = player.crouching ? 0.5 : 1.0;
-  const actualSpeed = (player.power === 'speed' ? moveSpeed * 1.6 : moveSpeed) * crouchSlow;
+  const actualSpeed = (player.power === 'star' ? moveSpeed * 1.6 : moveSpeed) * crouchSlow;
   player.vx = moveX * actualSpeed;
   if (moveX !== 0) player.facing = moveX;
 
@@ -936,7 +1443,7 @@ function update() {
   }
 
   // Danger
-  if (checkDanger(player.x + 2, player.y + 2, player.w - 4, player.h - 2) && player.invincible <= 0) {
+  if (checkDanger(player.x + 2, player.y + 2, player.w - 4, player.h - 2) && player.invincible <= 0 && player.power !== 'star') {
     if (player.power === 'shield' && !player.shieldHit) {
       player.shieldHit = true;
       player.power = null;
@@ -956,12 +1463,11 @@ function update() {
 
   if (player.invincible > 0) player.invincible--;
 
-  // Power timer
-  if (player.power) {
+  // Star power has a timer (20 seconds), other powers last until death
+  if (player.power === 'star') {
     player.powerTimer--;
     if (player.powerTimer <= 0) {
       player.power = null;
-      player.shieldHit = false;
     }
   }
 
@@ -1022,19 +1528,21 @@ function update() {
     }
 
     // Enemy-player collision
-    if (player.invincible <= 0) {
-      if (player.x + player.w > e.x + 1 && player.x < e.x + 9 &&
-          player.y + player.h > e.y + 1 && player.y < e.y + 6) {
-        if (player.vy > 0 && player.y + player.h < e.y + 4) {
-          e.alive = false; player.vy = -2.0; score += 100;
-        } else if (player.power === 'shield' && !player.shieldHit) {
-          // Shield absorbs one hit
-          player.shieldHit = true;
-          player.power = null;
-          player.invincible = 60;
-          player.vy = -2.0;
-        } else { die(); return; }
-      }
+    if (player.x + player.w > e.x + 1 && player.x < e.x + 9 &&
+        player.y + player.h > e.y + 1 && player.y < e.y + 6) {
+      if (player.power === 'star') {
+        // Star kills enemies on touch
+        e.alive = false; score += 100;
+      } else if (player.invincible > 0) {
+        // Skip during invincibility frames
+      } else if (player.vy > 0 && player.y + player.h < e.y + 4) {
+        e.alive = false; player.vy = -2.0; score += 100;
+      } else if (player.power === 'shield' && !player.shieldHit) {
+        player.shieldHit = true;
+        player.power = null;
+        player.invincible = 60;
+        player.vy = -2.0;
+      } else { die(); return; }
     }
   }
 
@@ -1103,11 +1611,8 @@ function update() {
       it.alive = false;
       player.power = it.type;
       player.shieldHit = false;
-      // Duration depends on type
-      if (it.type === 'fire') player.powerTimer = 600;       // 10s
-      else if (it.type === 'speed') player.powerTimer = 480;  // 8s
-      else if (it.type === 'shield') player.powerTimer = 900;  // 15s (one hit)
-      else if (it.type === 'superjump') player.powerTimer = 420; // 7s
+      // Star lasts 20 seconds, other powers last until death
+      if (it.type === 'star') player.powerTimer = 1200; // 20s at 60fps
       score += 200;
     }
     if (it.y > level.height * 8 + 30) it.alive = false;
@@ -1339,7 +1844,7 @@ function drawPlayer() {
     const glow = Math.sin(Date.now() / 150) * 0.3 + 0.5;
     const glowColors = {
       fire: `rgba(255,100,0,${glow*0.3})`,
-      speed: `rgba(255,220,0,${glow*0.3})`,
+      star: `rgba(255,220,0,${glow*0.5})`,
       shield: `rgba(80,150,255,${glow*0.35})`,
       superjump: `rgba(200,80,255,${glow*0.3})`,
     };
@@ -1353,11 +1858,10 @@ function drawPlayer() {
       ctx.arc((px + 5) * PX, (py + 6) * PX, 8 * PX, 0, Math.PI * 2);
       ctx.stroke();
     }
-    // Power timer bar
-    const maxTime = {fire:600, speed:480, shield:900, superjump:420};
-    const barW = Math.floor((player.powerTimer / (maxTime[player.power]||600)) * player.w);
-    const barColors = {fire:'#ff6600',speed:'#ffdd00',shield:'#4488ff',superjump:'#cc44ff'};
+    // Power bar: star shows countdown, others show full bar (permanent)
+    const barColors = {fire:'#ff6600',star:'#ffdd00',shield:'#4488ff',superjump:'#cc44ff'};
     ctx.fillStyle = barColors[player.power] || '#ffffff';
+    const barW = player.power === 'star' ? Math.floor((player.powerTimer / 1200) * player.w) : player.w;
     ctx.fillRect(px * PX, (py - 2) * PX, barW * PX, PX);
   }
 }
@@ -1391,7 +1895,7 @@ function drawItems() {
     if (spriteFn) drawSprite(ix, iy, spriteFn());
     // Floating glow effect
     const glow = Math.sin(Date.now() / 200) * 0.3 + 0.4;
-    const colors = { fire:'rgba(255,100,0,', speed:'rgba(255,220,0,', shield:'rgba(80,150,255,', superjump:'rgba(200,80,255,' };
+    const colors = { fire:'rgba(255,100,0,', star:'rgba(255,220,0,', shield:'rgba(80,150,255,', superjump:'rgba(200,80,255,' };
     ctx.fillStyle = (colors[it.type] || 'rgba(255,255,255,') + glow + ')';
     ctx.fillRect((ix - 1) * PX, (iy - 1) * PX, 12 * PX, 10 * PX);
   }
@@ -1434,7 +1938,7 @@ function drawHUD() {
   if (player.power) {
     const powerLabels = {
       fire: { text:'FIRE [Click/F]', color:'#ff6600' },
-      speed: { text:'SPEED [Click=Boost]', color:'#ffdd00' },
+      star: { text:'STAR [Click=Dash]', color:'#ffdd00' },
       shield: { text:'SHIELD [Click=Slam]', color:'#4488ff' },
       superjump: { text:'JUMP [Click=Launch]', color:'#cc44ff' },
     };
@@ -1507,7 +2011,77 @@ function drawMenu() {
 
   ctx.fillStyle = '#ffdd44';
   ctx.font = 'bold 14px monospace';
-  if (Math.sin(Date.now() / 400) > 0) ctx.fillText('Press SPACE to start!', COLS*PX/2 - 90, 114*PX);
+  if (Math.sin(Date.now() / 400) > 0) ctx.fillText('Press SPACE to start!', COLS*PX/2 - 90, 108*PX);
+
+  // Level select button
+  if (maxLevelReached > 0) {
+    ctx.fillStyle = '#44aa88';
+    ctx.fillRect(COLS*PX/2 - 75, 112*PX, 150, 20);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText('LEVELS [L]', COLS*PX/2 - 35, 112*PX + 14);
+  }
+}
+
+function drawLevelSelect() {
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Stars
+  for (let i = 0; i < 80; i++) {
+    const sx = (i * 37 + 7) % COLS;
+    const sy = (i * 53 + 13) % ROWS;
+    const b = Math.sin(Date.now() / (300 + i * 20) + i) * 0.4 + 0.6;
+    const c = Math.floor(200 * b);
+    drawPx(sx, sy, `rgb(${c},${c},${Math.min(255, c+40)})`);
+  }
+
+  ctx.fillStyle = '#ffdd44';
+  ctx.font = 'bold 28px monospace';
+  ctx.fillText('SELECT LEVEL', COLS * PX / 2 - 110, 18 * PX);
+
+  const levelNames = ['Dark Forest', 'Lava Caves', 'Sky Islands', 'Crystal Caverns', 'Poison Swamp', 'Dark Castle'];
+  const levelColors = ['#44aa44', '#ff6633', '#4488ff', '#aa44cc', '#33aa55', '#884422'];
+  const maxSel = Math.min(maxLevelReached, LEVELS.length - 1);
+  const cols = 3;
+
+  for (let i = 0; i < LEVELS.length; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const bx = COLS * PX / 2 - 115 + col * 82;
+    const by = 28 * PX + row * 42 * PX;
+    const unlocked = i <= maxSel;
+
+    // Box
+    if (i === selectedLevel) {
+      ctx.strokeStyle = '#ffdd44'; ctx.lineWidth = 3;
+      ctx.strokeRect(bx - 4, by - 4, 68, 34 * PX);
+    }
+    ctx.fillStyle = unlocked ? levelColors[i] : '#333344';
+    ctx.fillRect(bx, by, 60, 30 * PX);
+
+    // Level number
+    ctx.fillStyle = unlocked ? '#ffffff' : '#666666';
+    ctx.font = 'bold 20px monospace';
+    ctx.fillText(`${i + 1}`, bx + 24, by + 16 * PX);
+
+    // Level name
+    ctx.fillStyle = unlocked ? '#cccccc' : '#555555';
+    ctx.font = '8px monospace';
+    ctx.fillText(levelNames[i] || `Level ${i+1}`, bx - 2, by + 34 * PX);
+
+    // Lock for locked levels
+    if (!unlocked) {
+      ctx.fillStyle = '#888888';
+      ctx.font = '16px monospace';
+      ctx.fillText('X', bx + 24, by + 18 * PX);
+    }
+  }
+
+  ctx.fillStyle = '#6666aa';
+  ctx.font = '12px monospace';
+  ctx.fillText('Arrow keys to select, SPACE to play', COLS * PX / 2 - 130, 112 * PX);
+  ctx.fillText('ESC to go back', COLS * PX / 2 - 55, 117 * PX);
 }
 
 function drawDeathScreen() {
@@ -1575,6 +2149,8 @@ function gameLoop() {
   update();
   if (state === 'menu') {
     drawMenu();
+  } else if (state === 'levelselect') {
+    drawLevelSelect();
   } else if (state === 'playing' || state === 'dead' || state === 'levelcomplete') {
     drawBackground();
     drawLevel_();
